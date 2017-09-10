@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <util/delay.h>
+#include <avr/interrupt.h>
 #include <avr/io.h>
 #include "uart.h"
 
@@ -41,24 +42,44 @@ static void spi_init(void)
 {
 	PORT_MODE &= ~PORT_MISO; // MISO input
 	PORT_MODE |= PORT_MOSI|PORT_SCK|PORT_SS; // others output
+	PORT_STATUS |= PORT_MISO; // enable pull up
+	PORT_STATUS |= PORT_SS; // must be high
+	// set SPI as master
+	// prescaler Fosc / 16
+	// enable interrupts
+	// enable SPI
+	SPCR = _BV(MSTR)|_BV(SPR0)|_BV(SPR1)|_BV(SPE);
+}
 
-	// SPI control register
-	SPCR = _BV(MSTR);
+static uint8_t spi_tranceiver(const uint8_t data)
+{
+	SPDR = data;
+
+	while (!(SPSR&_BV(SPIF))) ;
+
+	return SPDR;
 }
 
 __attribute__((noreturn)) void main(void)
 {
 	spi_init();
+	uart_init();
+	
+	const uint8_t send[5] = { 0x01, 0x42, 0x00, 0x00, 0x00 };
+	uint8_t recv[5];
 
-	const uint8_t ports[3] = { PORT_MOSI, PORT_SCK, PORT_SS };
-	uint8_t idx = 0;
 	for (;;) {
-		PORT_STATUS |= ports[idx];
-		_delay_ms(500);
-		PORT_STATUS &= ~ports[idx];
-		if (++idx == 3)
-			idx = 0;
+		PORT_STATUS &= ~PORT_ATTENTION;
 
+		for (unsigned i = 0; i < 5; ++i)
+			recv[i] = spi_tranceiver(send[i]);
+
+		PORT_STATUS |= PORT_ATTENTION;
+
+		for (unsigned i = 0; i < 5; ++i)
+			printf("- %.2X - ", recv[i]);
+
+		printf("\n");
 	}
 }
 
