@@ -1,8 +1,8 @@
+#include <stdbool.h>
+#include <stdint.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include "uart.h"
 
 
