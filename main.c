@@ -5,16 +5,28 @@
 #include <avr/io.h>
 #include "uart.h"
 
+
+/* TODO:
+ * for now only bit bang implementation is done, need to add 
+ * implementation for AVR SPI hardware mode instead of software bit bang
+ * */
+
+/* NOTE:
+ * PORT_DATA needs a pull-up resistor around 1K - 10K
+ * */
+
+
 #define PORT_MODE DDRB
 #define PORT_STATUS PORTB
 #define PIN_STATUS PINB
 
+
 enum Ports {
 	// SPI
-	PORT_MOSI = _BV(PORTB3),
-	PORT_MISO = _BV(PORTB4),
-	PORT_SCK = _BV(PORTB5),
-	PORT_SS = _BV(PORTB2),
+	PORT_MOSI = _BV(PB3),
+	PORT_MISO = _BV(PB4),
+	PORT_SCK = _BV(PB5),
+	PORT_SS = _BV(PB2),
 
 	// PS2 controller
 	PORT_COMMAND =  PORT_MOSI,
@@ -38,41 +50,56 @@ enum Pins {
 };
 
 
-static void spi_init(void)
+static void ps2c_init(void)
 {
-	PORT_MODE &= ~PORT_MISO; // MISO input
-	PORT_MODE |= PORT_MOSI|PORT_SCK|PORT_SS; // others output
-	PORT_STATUS |= PORT_MISO; // enable pull up
-	PORT_STATUS |= PORT_SS; // must be high
-	// set SPI as master
-	// prescaler Fosc / 16
-	// enable interrupts
-	// enable SPI
-	SPCR = _BV(MSTR)|_BV(SPR0)|_BV(SPR1)|_BV(SPE);
+	PORT_MODE &= ~PORT_DATA; // DATA input
+	PORT_MODE |= PORT_COMMAND|PORT_ATTENTION|PORT_CLOCK; // others out
+	PORT_STATUS |= PORT_ATTENTION;
 }
 
-static uint8_t spi_tranceiver(const uint8_t data)
+static uint8_t ps2c_tranceiver(const uint8_t data)
 {
-	SPDR = data;
+	uint8_t recv = 0x00;
 
-	while (!(SPSR&_BV(SPIF))) ;
+	for (unsigned i = 0; i < 8; ++i) {
+		if (data&_BV(i))
+			PORT_STATUS |= PORT_COMMAND;
+		else
+			PORT_STATUS &= ~PORT_COMMAND;
 
-	return SPDR;
+		PORT_STATUS &= ~PORT_CLOCK; // clock low
+		_delay_us(1);
+
+		if (PIN_STATUS&PIN_DATA)
+			recv |= _BV(i);
+		
+		PORT_STATUS |= PORT_CLOCK; // clock high
+		_delay_us(1);
+	}
+
+	PORT_STATUS |= PORT_COMMAND;
+	_delay_ms(20);
+
+	return recv;
 }
+
 
 __attribute__((noreturn)) void main(void)
 {
-	spi_init();
+	ps2c_init();
 	uart_init();
+
+	_delay_ms(150);
 	
 	const uint8_t send[5] = { 0x01, 0x42, 0x00, 0x00, 0x00 };
 	uint8_t recv[5];
 
 	for (;;) {
 		PORT_STATUS &= ~PORT_ATTENTION;
+		_delay_us(500);
 
 		for (unsigned i = 0; i < 5; ++i)
-			recv[i] = spi_tranceiver(send[i]);
+			recv[i] = ps2c_tranceiver(send[i]);
 
 		PORT_STATUS |= PORT_ATTENTION;
 
