@@ -48,7 +48,7 @@ F_CPU = 16000000
 FORMAT = ihex
 
 # Target file name (without extension).
-TARGET = main
+TARGET = ps2c
 
 # List C source files here. (C dependencies are automatically generated.)
 SRC = main.c uart.c 
