@@ -6,16 +6,19 @@
 #include <avr/io.h>
 #include "uart.h"
 
-/* By Rafael Moura 2017 (https://github.com/dhustkoder) */
 
-/* TODO:
+/* *
+ * By Rafael Moura 2017 (https://github.com/dhustkoder)
+ *
+ * TODO:
  * for now only bit bang implementation is done, need to add 
  * implementation for AVR SPI hardware mode instead of software bit bang
+ *
+ * NOTE:
+ * PORT_DATA needs a pull-up resistor around 1K - 10K
+ *
  * */
 
-/* NOTE:
- * PORT_DATA needs a pull-up resistor around 1K - 10K
- * */
 
 #define PS2C_RW_DELAY   (((1.0 / F_PS2C) * 1000000.0) / 2.0)
 #define PS2C_WAIT_DELAY (((1.0 / F_PS2C) * 1000000.0) * 5.0)
@@ -27,13 +30,13 @@
 #define BUTTON_BIT_INDEX(button)  (1<<(button&0x07))
 
 enum Ports {
-	// SPI
+	/* SPI */
 	PORT_MOSI = _BV(PB3),
 	PORT_MISO = _BV(PB4),
 	PORT_SCK = _BV(PB5),
 	PORT_SS = _BV(PB2),
 
-	// PS2 controller
+	/* PS2 controller */
 	PORT_COMMAND =  PORT_MOSI,
 	PORT_DATA = PORT_MISO,
 	PORT_CLOCK = PORT_SCK,
@@ -41,13 +44,13 @@ enum Ports {
 };
 
 enum Pins {
-	// SPI
+	/* SPI */
 	PIN_MOSI = _BV(PINB3),
 	PIN_MISO = _BV(PINB4),
 	PIN_SCK = _BV(PINB5),
 	PIN_SS = _BV(PINB2),
 
-	// PS2 controller
+	/* PS2 controller */
 	PIN_COMMAND = PIN_MOSI,
 	PIN_DATA = PIN_MISO,
 	PIN_CLOCK = PIN_SCK,
@@ -55,10 +58,9 @@ enum Pins {
 };
 
 enum PS2C_Mode {
-	PS2C_MODE_DIGITAL             = 0x5A,
-	PS2C_MODE_ANALOG              = 0x73,
-	PS2C_MODE_ANALOG_AND_PRESSURE = 0x79,
-	PS2C_MODE_CONFIG              = 0xF3
+	PS2C_MODE_DIGITAL = 0x40,
+	PS2C_MODE_ANALOG  = 0x70,
+	PS2C_MODE_CONFIG  = 0xF0
 };
 
 enum Buttons {
@@ -120,13 +122,22 @@ static const char* const analog_joy_name[] = {
 
 static uint8_t button_state[BUTTON_LAST + 1];
 static uint8_t analog_joys[ANALOG_JOY_LAST + 1];
-static uint8_t data_buffer[21];
+static uint8_t data_buffer[36];
+
+
+static void ps2c_cmd(const uint8_t* restrict cmd, uint8_t sendsize);
+
 
 static void ps2c_init(void)
 {
-	PORT_MODE &= ~PORT_DATA; // DATA input
-	PORT_MODE |= PORT_COMMAND|PORT_ATTENTION|PORT_CLOCK; // others out
+	PORT_MODE &= ~PORT_DATA; /* DATA input */
+	PORT_MODE |= PORT_COMMAND|PORT_ATTENTION|PORT_CLOCK; /* others out */
 	PORT_STATUS |= PORT_ATTENTION;
+
+	/* sync connection */
+	const uint8_t n = 0x42;
+	for (uint8_t i = 0; i < 10; ++i)
+		ps2c_cmd(&n, 1);
 }
 
 static uint8_t ps2c_exchange(const uint8_t out) 
@@ -161,26 +172,11 @@ static void ps2c_cmd(const uint8_t* const restrict cmd, const uint8_t sendsize)
 
 	/* send first 2 */
 	data_buffer[0] = ps2c_exchange(0x01); /* ignore first byte in */
-	data_buffer[1] = ps2c_exchange(cmd[0]); /* send second byte and get mode */
-	
-	uint8_t recvsize;
-
-	switch (data_buffer[1]) {
-	default: /* fall */
-	case PS2C_MODE_DIGITAL: /* fall */
-	case PS2C_MODE_CONFIG:
-		recvsize = 5;
-		break;
-	case PS2C_MODE_ANALOG:
-		recvsize = 9;
-		break;
-	case PS2C_MODE_ANALOG_AND_PRESSURE:
-		recvsize = 21;
-		break;
-	}
+	data_buffer[1] = ps2c_exchange(cmd[0]); /* send second byte and get current mode */
+	const uint8_t recvsize = ((data_buffer[1]&0x0F) * 2) + 3;
 
 	for (uint8_t i = 2; i < recvsize; ++i) {
-		const uint8_t out = i < sendsize ? cmd[i] : 0x00;
+		const uint8_t out = i <= sendsize ? cmd[i - 1] : 0x00;
 		data_buffer[i] = ps2c_exchange(out);
 	}
 
@@ -200,44 +196,15 @@ static void ps2c_digital_poll(void)
 	}
 }
 
-static void ps2c_analog_poll(const uint8_t ww, const uint8_t yy)
+static void ps2c_analog_poll(void)
 {
-	const uint8_t cmd[4] = { 0x42, 0x00, ww, yy };
-	ps2c_cmd(cmd, 4);
+	/* TODO: get pressure working */
+
+	/* takes care of digital buttons (no pressure) */
+	ps2c_digital_poll();
 
 	/* get analog joys data */
 	memcpy(analog_joys, &data_buffer[5], 4);
-
-	if (data_buffer[1] == PS2C_MODE_ANALOG_AND_PRESSURE) {
-		/* scan digital only buttons */
-		const uint8_t digitals[] = {
-			BUTTON_SELECT, BUTTON_L3, BUTTON_R3, BUTTON_START
-		};
-
-		for (uint8_t i = 0; i < 4; ++i) {
-			button_state[digitals[i]] = 
-				(data_buffer[BUTTON_BYTE_INDEX(digitals[i])]&
-				 BUTTON_BIT_INDEX(digitals[i])) ? 0x00 : 0xFF;
-		}
-
-		/* now get pressure from buttons */
-		const uint8_t order[] = {
-			BUTTON_RIGHT, BUTTON_LEFT, BUTTON_UP, BUTTON_DOWN,
-			BUTTON_TRI, BUTTON_CIR, BUTTON_X, BUTTON_SQR,
-			BUTTON_L1, BUTTON_R1, BUTTON_L2, BUTTON_R2
-		};
-
-		for (uint8_t i = 0; i < 12; ++i)
-			button_state[order[i]] = data_buffer[9 + i];
-	} else {
-		/* get all digital */
-		for (uint8_t i = BUTTON_FIRST; i <= BUTTON_LAST; ++i) {
-			if (!(data_buffer[BUTTON_BYTE_INDEX(i)]&BUTTON_BIT_INDEX(i)))
-				button_state[i] = 0xFF;
-			else
-				button_state[i] = 0x00;
-		}
-	}
 }
 
 static void ps2c_enter_cfg_mode(void)
@@ -248,8 +215,11 @@ static void ps2c_enter_cfg_mode(void)
 
 static void ps2c_exit_cfg_mode(void)
 {
-	const uint8_t exit_cfg[8] = { 0x43, 0x00, 0x00, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A };
-	ps2c_cmd(exit_cfg, 1);
+	const uint8_t exit_cfg[8] = {
+		0x43, 0x00, 0x00, 0x5A,
+		0x5A, 0x5A, 0x5A, 0x5A
+	};
+	ps2c_cmd(exit_cfg, 8);
 }
 
 static void ps2c_set_mode(const enum PS2C_Mode mode, const bool lock)
@@ -260,21 +230,20 @@ static void ps2c_set_mode(const enum PS2C_Mode mode, const bool lock)
 		lock ? 0x03 : 0x00
 	};
 
+	const uint8_t motor_mapping[8] = {
+		0x4D, 0x00, 0x00, 0x01,
+		0xFF, 0xFF, 0xFF, 0xFF
+	};
+
+	const uint8_t cfg_pressure[5] = {
+		0x4F, 0x00, 0xFF, 0xFF, 0x03
+	};
+
 	ps2c_enter_cfg_mode();
 
 	ps2c_cmd(set_mode, 4);
-
-	if (mode == PS2C_MODE_ANALOG_AND_PRESSURE) {
-		const uint8_t motor_mapping[8] = {
-			0x4D, 0x00, 0x00, 0x1,
-			0xFF, 0xFF, 0xFF, 0xFF
-		};
-		const uint8_t cfg_pressure[5] = {
-			0x4F, 0x00, 0xFF, 0xFF, 0x03
-		};
-		ps2c_cmd(motor_mapping, 8);
-		ps2c_cmd(cfg_pressure, 5);
-	}
+	ps2c_cmd(motor_mapping, 8);
+	ps2c_cmd(cfg_pressure, 5);
 
 	ps2c_exit_cfg_mode();
 }
@@ -284,11 +253,12 @@ __attribute__((noreturn)) void main(void)
 {
 	ps2c_init();
 	uart_init();
-	
-	ps2c_set_mode(PS2C_MODE_ANALOG_AND_PRESSURE, true);
+
+	ps2c_set_mode(PS2C_MODE_ANALOG, true);
 
 	for (;;) {
-		ps2c_analog_poll(0x00, 0x00);
+		ps2c_analog_poll();
+
 		putchar(12);
 
 		printf("\n\nMODE: %.2X\n", data_buffer[1]);
@@ -304,3 +274,4 @@ __attribute__((noreturn)) void main(void)
 		_delay_ms(500);
 	}
 }
+
