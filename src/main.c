@@ -26,8 +26,11 @@
 #define PORT_MODE DDRB
 #define PORT_STATUS PORTB
 #define PIN_STATUS PINB
+
+/* enum Buttons byte/bit index on data_buffer */
 #define BUTTON_BYTE_INDEX(button) (3 + (button > 7))
 #define BUTTON_BIT_INDEX(button)  (1<<(button&0x07))
+
 
 enum Ports {
 	/* SPI */
@@ -58,9 +61,10 @@ enum Pins {
 };
 
 enum PS2C_Mode {
-	PS2C_MODE_DIGITAL = 0x40,
-	PS2C_MODE_ANALOG  = 0x70,
-	PS2C_MODE_CONFIG  = 0xF0
+	PS2C_MODE_DIGITAL         = 0x41,
+	PS2C_MODE_ANALOG          = 0x73,
+	PS2C_MODE_ANALOG_PRESSURE = 0x79,
+	PS2C_MODE_CONFIG          = 0xF3
 };
 
 enum Buttons {
@@ -135,9 +139,9 @@ static void ps2c_init(void)
 	PORT_STATUS |= PORT_ATTENTION;
 
 	/* sync connection */
-	const uint8_t n = 0x42;
+	const uint8_t cmd = 0x42;
 	for (uint8_t i = 0; i < 10; ++i)
-		ps2c_cmd(&n, 1);
+		ps2c_cmd(&cmd, 1);
 }
 
 static uint8_t ps2c_exchange(const uint8_t out) 
@@ -204,7 +208,7 @@ static void ps2c_analog_poll(void)
 	/* get analog joys data */
 	memcpy(analog_joys, &data_buffer[5], 4);
 
-	if (data_buffer[1] == 0x79) {
+	if (data_buffer[1] == PS2C_MODE_ANALOG_PRESSURE) {
 		/* digital only buttons */
 		const uint8_t d_order[4] = {
 			BUTTON_L3, BUTTON_SELECT, BUTTON_START, BUTTON_R3
@@ -261,19 +265,28 @@ static void ps2c_set_mode(const enum PS2C_Mode mode, const bool lock)
 		mode == PS2C_MODE_DIGITAL ? 0x00 : 0x01,
 		lock ? 0x03 : 0x00
 	};
-	const uint8_t motor_map[8] = {
-		0x4D, 0x00, 0x00, 0x01,
-		0xFF, 0xFF, 0xFF, 0xFF
-	};
-	const uint8_t cfg_pressure[5] = {
-		0x4F, 0x00, 0xFF, 0xFF, 0x03
-	};
 
 	ps2c_enter_cfg_mode();
 
 	ps2c_cmd(set_mode, 4);
-	ps2c_cmd(motor_map, 8);
-	ps2c_cmd(cfg_pressure, 5);
+
+	if (mode == PS2C_MODE_ANALOG_PRESSURE) {
+		uint8_t init_pressure[4] = {
+			0x40, 0x00, 0x00, 0x02
+		};
+
+		const uint8_t cfg_pressure[5] = {
+			0x4F, 0x00, 0xFF, 0xFF, 0x03
+		};
+
+		for (uint8_t i = 0; i < 0x0C; ++i) {
+			/* enable pressure 0x00 - 0x0B */
+			init_pressure[2] = i;
+			ps2c_cmd(init_pressure, 4);
+			ps2c_cmd(cfg_pressure, 5);
+		}
+	}
+
 
 	ps2c_exit_cfg_mode();
 }
@@ -284,7 +297,7 @@ __attribute__((noreturn)) void main(void)
 	ps2c_init();
 	uart_init();
 
-	ps2c_set_mode(PS2C_MODE_ANALOG, true);
+	ps2c_set_mode(PS2C_MODE_ANALOG_PRESSURE, true);
 
 	for (;;) {
 		ps2c_analog_poll();
