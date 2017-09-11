@@ -87,10 +87,10 @@ static void ps2c_exchange(const uint8_t size,
 			_delay_us(rwdelay);
 		}
 
+		recv[i] = recvbyte;
+
 		PORT_STATUS |= PORT_COMMAND;
 		_delay_us(waitdelay);
-
-		recv[i] = recvbyte;
 	}
 
 	PORT_STATUS |= PORT_ATTENTION;
@@ -103,14 +103,39 @@ __attribute__((noreturn)) void main(void)
 	ps2c_init();
 	uart_init();
 	
+	// play with LED's on PORTD with directional buttons
+	DDRD |= _BV(PORTD2)|_BV(PORTD3)|_BV(PORTD4)|_BV(PORTD5);
+
 	const uint8_t send[5] = { 0x01, 0x42, 0x00, 0x00, 0x00 };
 	uint8_t recv[5];
 
 	for (;;) {
 		ps2c_exchange(5, send, recv);
+
 		for (unsigned i = 0; i < 5; ++i)
 			printf("- %.2X - ", recv[i]);
-
 		printf("\n");
+
+		const uint8_t direct = recv[3];
+
+		if (!(direct&0x20))
+			PORTD |= _BV(PORTD2);
+		else
+			PORTD &= ~_BV(PORTD2);
+
+		if (!(direct&0x80))
+			PORTD |= _BV(PORTD3);
+		else
+			PORTD &= ~_BV(PORTD3);
+
+		if (!(direct&0x10))
+			PORTD |= _BV(PORTD4);
+		else
+			PORTD &= ~_BV(PORTD4);
+
+		if (!(direct&0x40))
+			PORTD |= _BV(PORTD5);
+		else
+			PORTD &= ~_BV(PORTD5);
 	}
 }
