@@ -57,30 +57,44 @@ static void ps2c_init(void)
 	PORT_STATUS |= PORT_ATTENTION;
 }
 
-static uint8_t ps2c_tranceiver(const uint8_t data)
+static void ps2c_exchange(const uint8_t size,
+                          const uint8_t* const restrict send,
+			  uint8_t* const restrict recv)
 {
-	uint8_t recv = 0x00;
+	const double rwdelay = ((1.0 / F_PS2C) * 1000000.0) / 2.0f;
+	const double waitdelay = rwdelay * 10.0;
 
-	for (unsigned i = 0; i < 8; ++i) {
-		if (data&_BV(i))
-			PORT_STATUS |= PORT_COMMAND;
-		else
-			PORT_STATUS &= ~PORT_COMMAND;
+	PORT_STATUS &= ~PORT_ATTENTION;
+	_delay_us(waitdelay);
 
-		PORT_STATUS &= ~PORT_CLOCK; // clock low
-		_delay_us(1);
+	for (uint8_t i = 0; i < size; ++i) {
+		const uint8_t sendbyte = send[i];
+		uint8_t recvbyte = 0x00;
 
-		if (PIN_STATUS&PIN_DATA)
-			recv |= _BV(i);
-		
-		PORT_STATUS |= PORT_CLOCK; // clock high
-		_delay_us(1);
+		for (unsigned b = 0; b < 8; ++b) {
+			if (sendbyte&(0x01<<b))
+				PORT_STATUS |= PORT_COMMAND;
+			else
+				PORT_STATUS &= ~PORT_COMMAND;
+
+			PORT_STATUS &= ~PORT_CLOCK;
+			_delay_us(rwdelay);
+
+			if (PIN_STATUS&PIN_DATA)
+				recvbyte |= (0x01<<b);
+
+			PORT_STATUS |= PORT_CLOCK;
+			_delay_us(rwdelay);
+		}
+
+		PORT_STATUS |= PORT_COMMAND;
+		_delay_us(waitdelay);
+
+		recv[i] = recvbyte;
 	}
 
-	PORT_STATUS |= PORT_COMMAND;
-	_delay_ms(20);
-
-	return recv;
+	PORT_STATUS |= PORT_ATTENTION;
+	_delay_us(waitdelay);
 }
 
 
@@ -88,26 +102,15 @@ __attribute__((noreturn)) void main(void)
 {
 	ps2c_init();
 	uart_init();
-
-	_delay_ms(150);
 	
 	const uint8_t send[5] = { 0x01, 0x42, 0x00, 0x00, 0x00 };
 	uint8_t recv[5];
 
 	for (;;) {
-		PORT_STATUS &= ~PORT_ATTENTION;
-		_delay_us(500);
-
-		for (unsigned i = 0; i < 5; ++i)
-			recv[i] = ps2c_tranceiver(send[i]);
-
-		PORT_STATUS |= PORT_ATTENTION;
-
+		ps2c_exchange(5, send, recv);
 		for (unsigned i = 0; i < 5; ++i)
 			printf("- %.2X - ", recv[i]);
 
 		printf("\n");
 	}
 }
-
-
