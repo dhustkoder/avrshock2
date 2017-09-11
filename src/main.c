@@ -198,13 +198,45 @@ static void ps2c_digital_poll(void)
 
 static void ps2c_analog_poll(void)
 {
-	/* TODO: get pressure working */
-
-	/* takes care of digital buttons (no pressure) */
-	ps2c_digital_poll();
+	const uint8_t cmd = 0x42;
+	ps2c_cmd(&cmd, 1);
 
 	/* get analog joys data */
 	memcpy(analog_joys, &data_buffer[5], 4);
+
+	if (data_buffer[1] == 0x79) {
+		/* digital only buttons */
+		const uint8_t d_order[4] = {
+			BUTTON_L3, BUTTON_SELECT, BUTTON_START, BUTTON_R3
+		};
+
+		for (uint8_t i = 0; i < 4; ++i) {
+			const uint8_t b = d_order[i];
+			if (!(data_buffer[BUTTON_BYTE_INDEX(b)]&BUTTON_BIT_INDEX(b)))
+				button_state[b] = 0xFF;
+			else
+				button_state[b] = 0x00;
+		}
+
+		/* get pressure ones */
+		const uint8_t p_order[12] = {
+			BUTTON_RIGHT, BUTTON_LEFT, BUTTON_UP, BUTTON_DOWN,
+			BUTTON_TRI, BUTTON_CIR, BUTTON_X, BUTTON_SQR,
+			BUTTON_L1, BUTTON_R1, BUTTON_L2, BUTTON_R2
+		};
+
+		for (uint8_t i = 0; i < 12; ++i) {
+			const uint8_t p = p_order[i];
+			button_state[p] = data_buffer[9 + i];
+		}
+	} else {
+		for (uint8_t i = BUTTON_FIRST; i <= BUTTON_LAST; ++i) {
+			if (!(data_buffer[BUTTON_BYTE_INDEX(i)]&BUTTON_BIT_INDEX(i)))
+				button_state[i] = 0xFF;
+			else
+				button_state[i] = 0x00;
+		}
+	}
 }
 
 static void ps2c_enter_cfg_mode(void)
@@ -229,12 +261,10 @@ static void ps2c_set_mode(const enum PS2C_Mode mode, const bool lock)
 		mode == PS2C_MODE_DIGITAL ? 0x00 : 0x01,
 		lock ? 0x03 : 0x00
 	};
-
-	const uint8_t motor_mapping[8] = {
+	const uint8_t motor_map[8] = {
 		0x4D, 0x00, 0x00, 0x01,
 		0xFF, 0xFF, 0xFF, 0xFF
 	};
-
 	const uint8_t cfg_pressure[5] = {
 		0x4F, 0x00, 0xFF, 0xFF, 0x03
 	};
@@ -242,7 +272,7 @@ static void ps2c_set_mode(const enum PS2C_Mode mode, const bool lock)
 	ps2c_enter_cfg_mode();
 
 	ps2c_cmd(set_mode, 4);
-	ps2c_cmd(motor_mapping, 8);
+	ps2c_cmd(motor_map, 8);
 	ps2c_cmd(cfg_pressure, 5);
 
 	ps2c_exit_cfg_mode();
