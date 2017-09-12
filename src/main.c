@@ -8,6 +8,7 @@
 
 
 /* *
+ *
  * By Rafael Moura 2017 (https://github.com/dhustkoder)
  *
  * TODO:
@@ -90,10 +91,11 @@ struct Pin {
 	const uint8_t bit;
 };
 
-static const struct Pin pin_att  = { &DDRD, &PORTD, &PIND, _BV(PORTD2) };
-static const struct Pin pin_cmd  = { &DDRD, &PORTD, &PIND, _BV(PORTD4) };
-static const struct Pin pin_data = { &DDRD, &PORTD, &PIND, _BV(PORTD7) };
-static const struct Pin pin_clk  = { &DDRB, &PORTB, &PINB, _BV(PORTB0) };
+
+static const struct Pin pin_att  = { &DDRD, &PORTD, &PIND, 1<<PD2 };
+static const struct Pin pin_cmd  = { &DDRD, &PORTD, &PIND, 1<<PD4 };
+static const struct Pin pin_data = { &DDRD, &PORTD, &PIND, 1<<PD7 };
+static const struct Pin pin_clk  = { &DDRB, &PORTB, &PINB, 1<<PB0 };
 
 static const char* const button_name[] = {
 	[BUTTON_SELECT] = "SELECT",
@@ -126,11 +128,12 @@ static uint8_t analog_joys[ANALOG_JOY_LAST + 1];
 static uint8_t data_buffer[36];
 
 
-static void ps2c_cmd(const uint8_t* restrict cmd, uint8_t cmdsize);
-static void ps2c_sync(void);
 static void set_pin_mode(const struct Pin* pin, PinMode mode);
 static void write_pin(const struct Pin* pin, PinStat stat);
 static PinStat read_pin(const struct Pin* pin);
+static void ps2c_cmd(const uint8_t* restrict cmd, uint8_t cmdsize);
+static void ps2c_sync(void);
+
 
 static void set_pin_mode(const struct Pin* const pin, const PinMode mode)
 {
@@ -326,13 +329,15 @@ __attribute__((noreturn)) void main(void)
 
 	/* let's play with LEDs with analog stick */
 	const struct Pin pins[] = {
-		{ &DDRD, &PORTD, &PIND, _BV(PORTD3) },
-		{ &DDRD, &PORTD, &PIND, _BV(PORTD5) },
-		{ &DDRD, &PORTD, &PIND, _BV(PORTD6) },
-		{ &DDRB, &PORTB, &PINB, _BV(PORTB1) }
+		{ &DDRD, &PORTD, &PIND, 1<<PD3 },
+		{ &DDRD, &PORTD, &PIND, 1<<PD5 },
+		{ &DDRD, &PORTD, &PIND, 1<<PD6 },
+		{ &DDRB, &PORTB, &PINB, 1<<PB1 }
 	};
-
-	const uint8_t joyorder[] = { ANALOG_JOY_LX, ANALOG_JOY_LX, ANALOG_JOY_LY, ANALOG_JOY_LY };
+	const uint8_t joyorder[] = {
+		ANALOG_JOY_LX, ANALOG_JOY_LX,
+		ANALOG_JOY_LY, ANALOG_JOY_LY
+	};
 
 	for (uint8_t i = 0; i < 4; ++i)
 		set_pin_mode(&pins[i], OUTPUT);
@@ -341,7 +346,7 @@ __attribute__((noreturn)) void main(void)
 
 	for (;;) {
 		ps2c_analog_poll();
-		/*	
+
 		putchar(12);
 
 		printf("\n\nMODE: %.2X\n", data_buffer[1]);
@@ -353,7 +358,7 @@ __attribute__((noreturn)) void main(void)
 		
 		for (uint8_t i = BUTTON_FIRST; i <= BUTTON_LAST; ++i)
 			printf(" %.3d ", button_state[i]);
-		*/
+
 		uint8_t toggle = 0xFF;
 		for (uint8_t i = 0; i < 4; ++i) {
 			write_pin(&pins[i], analog_joys[joyorder[i]] == toggle ? HIGH : LOW);

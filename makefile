@@ -10,10 +10,12 @@ BAUD = 9600
 CC = avr-gcc
 OBJCOPY = avr-objcopy
 SIZE = avr-size
-CFLAGS = -std=gnu99 -Wall -Wextra -Wno-main -Os -flto -DNDEBUG -DPS2C_UART_DEBUG \
-         -ffast-math -fstrict-aliasing -ffunction-sections -fdata-sections       \
-         -fno-unwind-tables  -fno-asynchronous-unwind-tables -DNDEBUG            \
-         -mmcu=$(MCU) -DF_CPU=$(F_CPU)UL -DBAUD=$(BAUD) -DF_PS2C=$(F_PS2C)UL
+CFLAGS = -std=gnu99 -Wall -Wextra -Wno-main -Os -flto -DNDEBUG -DPS2C_UART_DEBUG    \
+	 -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums           \
+         -ffast-math -fstrict-aliasing -ffunction-sections -fdata-sections          \
+	 -fwhole-program -ffreestanding -fno-tree-scev-cprop                        \
+	 -Wl,--relax -fno-unwind-tables  -fno-asynchronous-unwind-tables            \
+         -DNDEBUG -mmcu=$(MCU) -DF_CPU=$(F_CPU)UL -DBAUD=$(BAUD) -DF_PS2C=$(F_PS2C)UL
 
 # AVRDUDE
 AVRDUDE = avrdude
