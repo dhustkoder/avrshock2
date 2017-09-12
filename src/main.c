@@ -306,11 +306,17 @@ __attribute__((noreturn)) void main(void)
 	ps2c_init();
 	uart_init();
 
+	/* let's play with LEDs with analog stick */
+	const uint8_t ports[] = { _BV(PORTD2), _BV(PORTD3), _BV(PORTD4), _BV(PORTD5) };
+	const uint8_t joyorder[] = { ANALOG_JOY_LX, ANALOG_JOY_LX, ANALOG_JOY_LY, ANALOG_JOY_LY };
+	for (uint8_t i = 0; i < 4; ++i)
+		DDRD |= ports[i];
+
 	ps2c_set_mode(PS2C_MODE_ANALOG_PRESSURE, true);
 
 	for (;;) {
 		ps2c_analog_poll();
-
+		/*
 		putchar(12);
 
 		printf("\n\nMODE: %.2X\n", data_buffer[1]);
@@ -322,8 +328,16 @@ __attribute__((noreturn)) void main(void)
 		
 		for (uint8_t i = BUTTON_FIRST; i <= BUTTON_LAST; ++i)
 			printf(" %.3d ", button_state[i]);
+		*/
 
-		_delay_ms(500);
+		bool toggle = true;
+		for (uint8_t i = 0; i < 4; ++i) {
+			if (analog_joys[joyorder[i]] == (toggle ? 0xFF : 0x00))
+				PORTD |= ports[i];
+			else
+				PORTD &= ~ports[i];
+			toggle = !toggle;
+		}
 	}
 }
 

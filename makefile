@@ -3,7 +3,7 @@ SRC = src/main.c src/uart.c
 MCU = atmega328p
 F_CPU = 16000000
 #frequency for communication with the controller
-F_PS2C = 250000
+F_PS2C = 500000
 BAUD = 9600
 
 # C
