@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdnoreturn.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>
@@ -323,7 +324,7 @@ static void ps2c_set_mode(const PS2C_Mode mode, const bool lock)
 }
 
 
-__attribute__((noreturn)) void main(void)
+noreturn void main(void)
 {
 	ps2c_init();
 	uart_init();
