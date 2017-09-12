@@ -359,10 +359,14 @@ __attribute__((noreturn)) void main(void)
 		for (uint8_t i = BUTTON_FIRST; i <= BUTTON_LAST; ++i)
 			printf(" %.3d ", button_state[i]);
 
-		uint8_t toggle = 0xFF;
+		bool toggle = true;
 		for (uint8_t i = 0; i < 4; ++i) {
-			write_pin(&pins[i], analog_joys[joyorder[i]] == toggle ? HIGH : LOW);
-			toggle ^= 0xFF;
+			if ((toggle && analog_joys[joyorder[i]] > 188) ||
+			    (!toggle && analog_joys[joyorder[i]] < 68))
+				write_pin(&pins[i], HIGH);
+			else
+				write_pin(&pins[i], LOW);
+			toggle = !toggle;
 		};
 	}
 }
