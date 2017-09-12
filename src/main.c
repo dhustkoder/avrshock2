@@ -201,10 +201,11 @@ static void ps2c_cmd(const uint8_t* const restrict cmd, const uint8_t cmdsize)
 	const uint8_t recvsize = ((data_buffer[1]&0x0F) * 2) + 3;
 
 	/* send and receive the rest of the data */
-	for (uint8_t i = 2; i < recvsize; ++i) {
-		const uint8_t out = i <= cmdsize ? cmd[i - 1] : 0x00;
-		data_buffer[i] = ps2c_exchange(out);
-	}
+	uint8_t i = 2;
+	for (; i <= cmdsize; ++i)
+		data_buffer[i] = ps2c_exchange(cmd[i - 1]);
+	for (; i < recvsize; ++i)
+		data_buffer[i] = ps2c_exchange(0x00);
 
 	write_pin(&pin_att, HIGH);
 	_delay_us(PS2C_WAIT_DELAY);
