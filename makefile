@@ -1,5 +1,5 @@
 TARGET = ps2c
-SRC = src/main.c src/uart.c
+SRC = src/main.c src/ps2c.c src/uart.c
 MCU = atmega328p
 F_CPU = 16000000
 #frequency for communication with the controller
