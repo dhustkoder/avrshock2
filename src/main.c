@@ -15,49 +15,31 @@
  * implementation for AVR SPI hardware mode instead of software bit bang
  *
  * NOTE:
- * PORT_DATA needs a pull-up resistor around 1K - 10K
+ * pin_data needs a pull-up resistor around 1K - 10K
  *
  * */
 
 
 #define PS2C_RW_DELAY   (((1.0 / F_PS2C) * 1000000.0) / 2.0)
-#define PS2C_WAIT_DELAY (((1.0 / F_PS2C) * 1000000.0) * 5.0)
-
-#define PORT_MODE DDRB
-#define PORT_STATUS PORTB
-#define PIN_STATUS PINB
+#define PS2C_WAIT_DELAY (((1.0 / F_PS2C) * 1000000.0) * 10.0)
 
 /* enum Buttons byte/bit index on data_buffer */
 #define BUTTON_BYTE_INDEX(button) (3 + (button > 7))
 #define BUTTON_BIT_INDEX(button)  (1<<(button&0x07))
 
+typedef uint8_t PinMode;
+typedef uint8_t PinStat;
+typedef uint8_t PS2C_Mode;
 
-enum Ports {
-	/* SPI */
-	PORT_MOSI = _BV(PB3),
-	PORT_MISO = _BV(PB4),
-	PORT_SCK = _BV(PB5),
-	PORT_SS = _BV(PB2),
-
-	/* PS2 controller */
-	PORT_COMMAND =  PORT_MOSI,
-	PORT_DATA = PORT_MISO,
-	PORT_CLOCK = PORT_SCK,
-	PORT_ATTENTION = PORT_SS
+enum PinMode {
+	OUTPUT,
+	INPUT,
+	INPUT_PULLUP
 };
 
-enum Pins {
-	/* SPI */
-	PIN_MOSI = _BV(PINB3),
-	PIN_MISO = _BV(PINB4),
-	PIN_SCK = _BV(PINB5),
-	PIN_SS = _BV(PINB2),
-
-	/* PS2 controller */
-	PIN_COMMAND = PIN_MOSI,
-	PIN_DATA = PIN_MISO,
-	PIN_CLOCK = PIN_SCK,
-	PIN_ATTENTION = PIN_SS
+enum PinStat {
+	HIGH,
+	LOW
 };
 
 enum PS2C_Mode {
@@ -100,6 +82,19 @@ enum AnalogJoys {
 	ANALOG_JOY_LAST  = ANALOG_JOY_LY
 };
 
+
+struct Pin {
+	volatile uint8_t* const ddr;
+	volatile uint8_t* const port;
+	volatile uint8_t* const pin;
+	const uint8_t bit;
+};
+
+static const struct Pin pin_att  = { &DDRD, &PORTD, &PIND, _BV(PORTD2) };
+static const struct Pin pin_cmd  = { &DDRD, &PORTD, &PIND, _BV(PORTD4) };
+static const struct Pin pin_data = { &DDRD, &PORTD, &PIND, _BV(PORTD7) };
+static const struct Pin pin_clk  = { &DDRB, &PORTB, &PINB, _BV(PORTB0) };
+
 static const char* const button_name[] = {
 	[BUTTON_SELECT] = "SELECT",
 	[BUTTON_L3]     = "L3",
@@ -133,12 +128,39 @@ static uint8_t data_buffer[36];
 
 static void ps2c_cmd(const uint8_t* restrict cmd, uint8_t cmdsize);
 static void ps2c_sync(void);
+static void set_pin_mode(const struct Pin* pin, PinMode mode);
+static void write_pin(const struct Pin* pin, PinStat stat);
+static PinStat read_pin(const struct Pin* pin);
+
+static void set_pin_mode(const struct Pin* const pin, const PinMode mode)
+{
+	if (mode == OUTPUT) {
+		*pin->ddr |= pin->bit;
+	} else {
+		*pin->ddr &= ~pin->bit;
+		write_pin(pin, mode == INPUT_PULLUP ? HIGH : LOW);	
+	}
+}
+
+static void write_pin(const struct Pin* const pin, const PinStat stat)
+{
+	if (stat == HIGH)
+		*pin->port |= pin->bit;
+	else
+		*pin->port &= ~pin->bit;
+}
+
+static PinStat read_pin(const struct Pin* const pin)
+{
+	return ((*pin->pin)&pin->bit) ? HIGH : LOW;
+}
 
 static void ps2c_init(void)
 {
-	PORT_MODE &= ~PORT_DATA; /* DATA input */
-	PORT_MODE |= PORT_COMMAND|PORT_ATTENTION|PORT_CLOCK; /* others out */
-	PORT_STATUS |= PORT_ATTENTION;
+	set_pin_mode(&pin_data, INPUT);
+	set_pin_mode(&pin_cmd, OUTPUT);
+	set_pin_mode(&pin_att, OUTPUT);
+	set_pin_mode(&pin_clk, OUTPUT);
 	ps2c_sync();
 }
 
@@ -146,22 +168,19 @@ static uint8_t ps2c_exchange(const uint8_t out)
 {
 	uint8_t in = 0x00;
 	for (unsigned b = 0; b < 8; ++b) {
-		if (out&(0x01<<b))
-			PORT_STATUS |= PORT_COMMAND;
-		else
-			PORT_STATUS &= ~PORT_COMMAND;
+		write_pin(&pin_cmd, (out&(0x01<<b)) ? HIGH : LOW);
 
-		PORT_STATUS &= ~PORT_CLOCK;
+		write_pin(&pin_clk, LOW);
 		_delay_us(PS2C_RW_DELAY);
 
-		if (PIN_STATUS&PIN_DATA)
+		if (read_pin(&pin_data) == HIGH)
 			in |= (0x01<<b);
 
-		PORT_STATUS |= PORT_CLOCK;
+		write_pin(&pin_clk, HIGH);
 		_delay_us(PS2C_RW_DELAY);
 	}
 
-	PORT_STATUS |= PORT_COMMAND;
+	write_pin(&pin_cmd, HIGH);
 	_delay_us(PS2C_WAIT_DELAY);
 
 	return in;
@@ -169,7 +188,7 @@ static uint8_t ps2c_exchange(const uint8_t out)
 
 static void ps2c_cmd(const uint8_t* const restrict cmd, const uint8_t cmdsize)
 {
-	PORT_STATUS &= ~PORT_ATTENTION;
+	write_pin(&pin_att, LOW);
 	_delay_us(PS2C_WAIT_DELAY);
 
 	/* send first 2 */
@@ -184,14 +203,14 @@ static void ps2c_cmd(const uint8_t* const restrict cmd, const uint8_t cmdsize)
 		data_buffer[i] = ps2c_exchange(out);
 	}
 
-	PORT_STATUS |= PORT_ATTENTION;
+	write_pin(&pin_att, HIGH);
 	_delay_us(PS2C_WAIT_DELAY);
 }
 
 static void ps2c_sync(void)
 {
 	const uint8_t cmd = 0x42;
-	for (uint8_t i = 0; i < 32; ++i)
+	for (uint8_t i = 0; i < 0xFF; ++i)
 		ps2c_cmd(&cmd, 1);
 }
 
@@ -265,19 +284,18 @@ static void ps2c_exit_cfg_mode(void)
 	ps2c_cmd(exit_cfg, 8);
 }
 
-static void ps2c_set_mode(const enum PS2C_Mode mode, const bool lock)
+static void ps2c_set_mode(const PS2C_Mode mode, const bool lock)
 {
 	const uint8_t set_mode[4] = {
 		0x44, 0x00,
 		mode == PS2C_MODE_DIGITAL ? 0x00 : 0x01,
 		lock ? 0x03 : 0x00
 	};
-
+	
 	do {
 		ps2c_enter_cfg_mode();
-
 		ps2c_cmd(set_mode, 4);
-
+		
 		if (mode == PS2C_MODE_ANALOG_PRESSURE) {
 			uint8_t init_pressure[4] = {
 				0x40, 0x00, 0x00, 0x02
@@ -307,16 +325,23 @@ __attribute__((noreturn)) void main(void)
 	uart_init();
 
 	/* let's play with LEDs with analog stick */
-	const uint8_t ports[] = { _BV(PORTD2), _BV(PORTD3), _BV(PORTD4), _BV(PORTD5) };
+	const struct Pin pins[] = {
+		{ &DDRD, &PORTD, &PIND, _BV(PORTD3) },
+		{ &DDRD, &PORTD, &PIND, _BV(PORTD5) },
+		{ &DDRD, &PORTD, &PIND, _BV(PORTD6) },
+		{ &DDRB, &PORTB, &PINB, _BV(PORTB1) }
+	};
+
 	const uint8_t joyorder[] = { ANALOG_JOY_LX, ANALOG_JOY_LX, ANALOG_JOY_LY, ANALOG_JOY_LY };
+
 	for (uint8_t i = 0; i < 4; ++i)
-		DDRD |= ports[i];
+		set_pin_mode(&pins[i], OUTPUT);
 
 	ps2c_set_mode(PS2C_MODE_ANALOG_PRESSURE, true);
 
 	for (;;) {
 		ps2c_analog_poll();
-		/*
+		/*	
 		putchar(12);
 
 		printf("\n\nMODE: %.2X\n", data_buffer[1]);
@@ -329,15 +354,11 @@ __attribute__((noreturn)) void main(void)
 		for (uint8_t i = BUTTON_FIRST; i <= BUTTON_LAST; ++i)
 			printf(" %.3d ", button_state[i]);
 		*/
-
-		bool toggle = true;
+		uint8_t toggle = 0xFF;
 		for (uint8_t i = 0; i < 4; ++i) {
-			if (analog_joys[joyorder[i]] == (toggle ? 0xFF : 0x00))
-				PORTD |= ports[i];
-			else
-				PORTD &= ~ports[i];
-			toggle = !toggle;
-		}
+			write_pin(&pins[i], analog_joys[joyorder[i]] == toggle ? HIGH : LOW);
+			toggle ^= 0xFF;
+		};
 	}
 }
 
