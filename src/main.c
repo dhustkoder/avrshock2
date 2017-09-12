@@ -67,6 +67,7 @@ enum PS2C_Mode {
 	PS2C_MODE_CONFIG          = 0xF3
 };
 
+/* Buttons enums are in byte/bit order as they come in data_buffer[3]...[4] */
 enum Buttons {
 	BUTTON_SELECT = 0x00,
 	BUTTON_L3     = 0x01,
@@ -89,6 +90,7 @@ enum Buttons {
 	BUTTON_LAST   = BUTTON_SQR
 };
 
+/* AnalogJoys enums are in byte order as they come in data_buffer[5]...[9] */
 enum AnalogJoys {
 	ANALOG_JOY_RX,
 	ANALOG_JOY_RY,
@@ -129,19 +131,15 @@ static uint8_t analog_joys[ANALOG_JOY_LAST + 1];
 static uint8_t data_buffer[36];
 
 
-static void ps2c_cmd(const uint8_t* restrict cmd, uint8_t sendsize);
-
+static void ps2c_cmd(const uint8_t* restrict cmd, uint8_t cmdsize);
+static void ps2c_sync(void);
 
 static void ps2c_init(void)
 {
 	PORT_MODE &= ~PORT_DATA; /* DATA input */
 	PORT_MODE |= PORT_COMMAND|PORT_ATTENTION|PORT_CLOCK; /* others out */
 	PORT_STATUS |= PORT_ATTENTION;
-
-	/* sync connection */
-	const uint8_t cmd = 0x42;
-	for (uint8_t i = 0; i < 10; ++i)
-		ps2c_cmd(&cmd, 1);
+	ps2c_sync();
 }
 
 static uint8_t ps2c_exchange(const uint8_t out) 
@@ -169,23 +167,32 @@ static uint8_t ps2c_exchange(const uint8_t out)
 	return in;
 }
 
-static void ps2c_cmd(const uint8_t* const restrict cmd, const uint8_t sendsize)
+static void ps2c_cmd(const uint8_t* const restrict cmd, const uint8_t cmdsize)
 {
 	PORT_STATUS &= ~PORT_ATTENTION;
 	_delay_us(PS2C_WAIT_DELAY);
 
 	/* send first 2 */
-	data_buffer[0] = ps2c_exchange(0x01); /* ignore first byte in */
-	data_buffer[1] = ps2c_exchange(cmd[0]); /* send second byte and get current mode */
+	data_buffer[0] = ps2c_exchange(0x01);   /* the first byte in header is always 0x01 */
+	data_buffer[1] = ps2c_exchange(cmd[0]); /* send second byte and get current mode   */
+	/* calculate the total number of bytes to send and receive based on the mode */
 	const uint8_t recvsize = ((data_buffer[1]&0x0F) * 2) + 3;
 
+	/* send and receive the rest of the data */
 	for (uint8_t i = 2; i < recvsize; ++i) {
-		const uint8_t out = i <= sendsize ? cmd[i - 1] : 0x00;
+		const uint8_t out = i <= cmdsize ? cmd[i - 1] : 0x00;
 		data_buffer[i] = ps2c_exchange(out);
 	}
 
 	PORT_STATUS |= PORT_ATTENTION;
 	_delay_us(PS2C_WAIT_DELAY);
+}
+
+static void ps2c_sync(void)
+{
+	const uint8_t cmd = 0x42;
+	for (uint8_t i = 0; i < 32; ++i)
+		ps2c_cmd(&cmd, 1);
 }
 
 static void ps2c_digital_poll(void)
@@ -266,29 +273,31 @@ static void ps2c_set_mode(const enum PS2C_Mode mode, const bool lock)
 		lock ? 0x03 : 0x00
 	};
 
-	ps2c_enter_cfg_mode();
+	do {
+		ps2c_enter_cfg_mode();
 
-	ps2c_cmd(set_mode, 4);
+		ps2c_cmd(set_mode, 4);
 
-	if (mode == PS2C_MODE_ANALOG_PRESSURE) {
-		uint8_t init_pressure[4] = {
-			0x40, 0x00, 0x00, 0x02
-		};
+		if (mode == PS2C_MODE_ANALOG_PRESSURE) {
+			uint8_t init_pressure[4] = {
+				0x40, 0x00, 0x00, 0x02
+			};
 
-		const uint8_t cfg_pressure[5] = {
-			0x4F, 0x00, 0xFF, 0xFF, 0x03
-		};
+			const uint8_t cfg_pressure[5] = {
+				0x4F, 0x00, 0xFF, 0xFF, 0x03
+			};
 
-		for (uint8_t i = 0; i < 0x0C; ++i) {
-			/* enable pressure 0x00 - 0x0B */
-			init_pressure[2] = i;
-			ps2c_cmd(init_pressure, 4);
-			ps2c_cmd(cfg_pressure, 5);
+			for (uint8_t i = 0; i < 0x0C; ++i) {
+				/* enable pressure 0x00 - 0x0B */
+				init_pressure[2] = i;
+				ps2c_cmd(init_pressure, 4);
+				ps2c_cmd(cfg_pressure, 5);
+			}
 		}
-	}
 
-
-	ps2c_exit_cfg_mode();
+		ps2c_exit_cfg_mode();
+		ps2c_sync();
+	} while (data_buffer[1] != mode);
 }
 
 
