@@ -23,7 +23,7 @@
 
 
 #define PS2C_RW_DELAY   (((1.0 / F_PS2C) * 1000000.0) / 2.0)
-#define PS2C_WAIT_DELAY (((1.0 / F_PS2C) * 1000000.0) * 10.0)
+#define PS2C_WAIT_DELAY (15.2)
 
 /* enum Buttons byte/bit index on data_buffer */
 #define BUTTON_BYTE_INDEX(button) (3 + (button > 7))
@@ -348,10 +348,9 @@ noreturn void main(void)
 
 	for (;;) {
 		ps2c_analog_poll();
-
+		
 		putchar(12);
-
-		printf("\n\nMODE: %.2X\n", data_buffer[1]);
+		printf("\n\nMODE: $%.2X\n", data_buffer[1]);
 		printf("ANALOG JOYS [%.3d %.3d %.3d %.3d]",
 		       analog_joys[0], analog_joys[1],
 		       analog_joys[2], analog_joys[3]);
@@ -360,7 +359,7 @@ noreturn void main(void)
 		
 		for (uint8_t i = BUTTON_FIRST; i <= BUTTON_LAST; ++i)
 			printf(" %.3d ", button_state[i]);
-
+		
 		bool toggle = true;
 		for (uint8_t i = 0; i < 4; ++i) {
 			if ((toggle && analog_joys[joyorder[i]] > 188) ||
@@ -370,6 +369,8 @@ noreturn void main(void)
 				write_pin(&pins[i], LOW);
 			toggle = !toggle;
 		};
+
+		_delay_ms(250);
 	}
 }
 
