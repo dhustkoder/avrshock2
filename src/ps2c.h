@@ -10,8 +10,7 @@ typedef uint8_t PS2C_Analog;
 
 enum PS2C_Mode {
 	PS2C_MODE_DIGITAL         = 0x41,
-	PS2C_MODE_ANALOG          = 0x73,
-	PS2C_MODE_ANALOG_PRESSURE = 0x79
+	PS2C_MODE_ANALOG          = 0x73
 };
 
 /* Button enums are in byte/bit order as they come in data_buffer[3]...[4] */
@@ -57,8 +56,7 @@ static inline PS2C_Mode ps2c_currmode(void)
 
 void ps2c_init(void);
 void ps2c_set_mode(const PS2C_Mode mode, const bool lock);
-void ps2c_analog_poll(void);
-void ps2c_digital_poll(void);
+void ps2c_poll(void);
 
 extern uint8_t ps2c_buttons[PS2C_BUTTON_LAST + 1]; /* 0x00 released - 0xFF fully pressed */
 extern uint8_t ps2c_analogs[PS2C_ANALOG_LAST + 1]; /* 0x7F - middle point                */
