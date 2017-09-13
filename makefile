@@ -2,8 +2,6 @@ TARGET = ps2c
 SRC = src/main.c src/ps2c.c src/uart.c
 MCU = atmega328p
 F_CPU = 16000000
-#frequency for communication with the controller
-F_PS2C = 500000
 BAUD = 9600
 
 # C
@@ -15,7 +13,7 @@ CFLAGS = -std=c11 -pedantic-errors -Wall -Wextra -Wno-main -DNDEBUG -DPS2C_UART_
          -ffast-math -fstrict-aliasing -ffunction-sections -fdata-sections             \
 	 -fwhole-program -ffreestanding -fno-tree-scev-cprop                           \
 	 -Wl,--relax -fno-unwind-tables  -fno-asynchronous-unwind-tables               \
-         -DNDEBUG -mmcu=$(MCU) -DF_CPU=$(F_CPU)UL -DBAUD=$(BAUD) -DF_PS2C=$(F_PS2C)UL
+         -DNDEBUG -mmcu=$(MCU) -DF_CPU=$(F_CPU)UL -DBAUD=$(BAUD)
 
 # AVRDUDE
 AVRDUDE = avrdude

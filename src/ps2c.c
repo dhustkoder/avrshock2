@@ -19,29 +19,33 @@
  * the controller commands, and need add vibration motor controll
  *
  * NOTE:
- * pin_data needs a pull-up resistor around 1K - 10K
+ * PIN_DATA needs a pull-up resistor around 1K - 10K
  *
  * */
 
 #define PORT_ATT   PORTD
 #define DDR_ATT    DDRD
-#define BIT_ATT    (1<<PD2)
+#define BIT_ATT    (0x01<<PD2)
 
 #define PORT_CMD   PORTD
 #define DDR_CMD    DDRD
-#define BIT_CMD    (1<<PD4)
+#define BIT_CMD    (0x01<<PD4)
 
 #define PORT_DATA  PORTD
 #define DDR_DATA   DDRD
 #define PIN_DATA   PIND
-#define BIT_DATA   (1<<PD7)
+#define BIT_DATA   (0x01<<PD7)
 
 #define PORT_CLK   PORTB
 #define DDR_CLK    DDRB
-#define BIT_CLK    (1<<PB0)
+#define BIT_CLK    (0x01<<PB0)
+
+#ifndef F_PS2C
+#define F_PS2C 250000UL
+#endif
 
 #define RW_DELAY   (((1.0 / F_PS2C) * 1000000.0) / 2.0)
-#define WAIT_DELAY (22.2)
+#define WAIT_DELAY (10.0)
 
 /* enum Button byte/bit index on ps2c_data_buffer */
 #define BUTTON_BYTE(button) ps2c_data_buffer[(3 + (button > 7))]
@@ -50,13 +54,13 @@
 
 uint8_t ps2c_buttons[PS2C_BUTTON_LAST + 1];
 uint8_t ps2c_analogs[PS2C_ANALOG_LAST + 1];
-uint8_t ps2c_data_buffer[36];
+uint8_t ps2c_data_buffer[33];
 
 
 static uint8_t ps2c_exchange(const uint8_t out)
 {
 	uint8_t in = 0x00;
-	for (unsigned b = 0; b < 8; ++b) {
+	for (uint8_t b = 0; b < 8; ++b) {
 		if (out&(0x01<<b))
 			PORT_CMD |= BIT_CMD;
 		else
@@ -114,11 +118,8 @@ static void ps2c_enter_cfg_mode(void)
 
 static void ps2c_exit_cfg_mode(void)
 {
-	const uint8_t exit_cfg[8] = {
-		0x43, 0x00, 0x00, 0x5A,
-		0x5A, 0x5A, 0x5A, 0x5A
-	};
-	ps2c_cmd(exit_cfg, 8);
+	const uint8_t exit_cfg = 0x43;
+	ps2c_cmd(&exit_cfg, 1);
 }
 
 

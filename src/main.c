@@ -3,9 +3,16 @@
 #include <util/delay.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>
-#include "uart.h"
 #include "ps2c.h"
+#include "uart.h"
 
+/* *
+ * By Rafael Moura 2017 (https://github.com/dhustkoder)
+ * ps2c usage example
+ * uncomment uart_init and printfs for serial information on your computer
+ * set the BAUD rate in the makefile.
+ * this example was tested on atmega328p Arduino UNO board
+ * */
 
 static const char* const button_name[] = {
 	[PS2C_BUTTON_SELECT] = "SELECT",

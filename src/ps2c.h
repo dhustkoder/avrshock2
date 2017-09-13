@@ -9,8 +9,8 @@ typedef uint8_t PS2C_Button;
 typedef uint8_t PS2C_Analog;
 
 enum PS2C_Mode {
-	PS2C_MODE_DIGITAL         = 0x41,
-	PS2C_MODE_ANALOG          = 0x73
+	PS2C_MODE_DIGITAL = 0x41,
+	PS2C_MODE_ANALOG  = 0x73
 };
 
 /* Button enums are in byte/bit order as they come in data_buffer[3]...[4] */
@@ -49,7 +49,7 @@ enum PS2C_Analog {
 
 static inline PS2C_Mode ps2c_currmode(void)
 {
-	extern uint8_t ps2c_data_buffer[36];
+	extern uint8_t ps2c_data_buffer[33];
 	return ps2c_data_buffer[1];
 }
 
