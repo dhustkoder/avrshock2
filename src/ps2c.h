@@ -49,7 +49,7 @@ enum PS2C_Analog {
 
 static inline PS2C_Mode ps2c_currmode(void)
 {
-	extern uint8_t ps2c_data_buffer[33];
+	extern uint8_t ps2c_data_buffer[34];
 	return ps2c_data_buffer[1];
 }
 

@@ -54,7 +54,7 @@
 
 uint8_t ps2c_buttons[PS2C_BUTTON_LAST + 1];
 uint8_t ps2c_analogs[PS2C_ANALOG_LAST + 1];
-uint8_t ps2c_data_buffer[33];
+uint8_t ps2c_data_buffer[34];
 
 
 static uint8_t ps2c_exchange(const uint8_t out)
