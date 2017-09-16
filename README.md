@@ -6,7 +6,7 @@ To use the PS2C, just add the ps2c.c and ps2c.h source files to your project.
 The makefile builds an example of how to use the PS2C API by manipulating LEDs using the analog stick, it was tested on Atmega328p (Arduino UNO board).
 Look in main.c for pins used to light LEDs, and ps2c.c for the pins that communicate with the controller.
 
-[![giff](https://user-images.githubusercontent.com/11935784/30407023-2046349e-98cc-11e7-970d-6c117b176b94.gif)](https://www.youtube.com/watch?v=_h1dANNXZOw)
+[![gif](https://user-images.githubusercontent.com/11935784/30407023-2046349e-98cc-11e7-970d-6c117b176b94.gif)](https://www.youtube.com/watch?v=_h1dANNXZOw)
 
 ### Details
 PS2C uses 4 pins to communicate with the controller, select these pins by editing
