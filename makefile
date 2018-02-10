@@ -33,7 +33,7 @@ $(EXAMPLE): $(LIBAVRSHOCK2) $(EXAMPLE_SOURCES) $(EXAMPLE_HEADERS) $(LIB_SOURCES)
 	$(SIZE) $(EXAMPLE).elf
 
 
-program-example: $(EXAMPLE)
+program: $(EXAMPLE)
 	$(AVRDUDE) -p $(MCU) -P $(AVRDUDE_PORT) -c $(AVRDUDE_PROGRAMMER) -b 115200 -U flash:w:$(EXAMPLE).hex:i
 
 

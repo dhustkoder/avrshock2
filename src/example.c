@@ -44,18 +44,20 @@ static const char* const analog_name[] = {
 noreturn void main(void)
 {
 	avrshock2_init();
-	/* uart_init(); */
+	uart_init();
 
 	/* let's play with LEDs using the analog stick */
+	/*
 	#define SENSITIVITY (80)
 	DDRD |= (1<<PD3)|(1<<PD5)|(1<<PD6);
 	DDRB |= (1<<PB1);
+	*/
 
 	avrshock2_set_mode(AVRSHOCK2_MODE_ANALOG, true);
 
 	for (;;) {
 		avrshock2_poll();
-
+		/*
 		if (avrshock2_buttons[AVRSHOCK2_BUTTON_L3]) {
 			PORTD |= (1<<PD3)|(1<<PD5)|(1<<PD6);
 			PORTB |= (1<<PB1);
@@ -82,15 +84,15 @@ noreturn void main(void)
 		else
 			PORTB &= ~(1<<PB1);
 
-		/*
+		*/	
 		putchar(12);
+		puts("\tAVRSHOCK2 EXAMPLE!\n");
 		printf("MODE: $%.2X\n", avrshock2_currmode());
-		for (uint8_t i = AVRSHOCK2_ANALOG_FIRST; i <= AVRSHOCK2_ANALOG_LAST; ++i)
+		for (avrshock2_analog_t i = AVRSHOCK2_ANALOG_FIRST; i <= AVRSHOCK2_ANALOG_LAST; ++i)
 			printf("%s: %d\n", analog_name[i], avrshock2_analogs[i]);
-		for (uint8_t i = AVRSHOCK2_BUTTON_FIRST; i <= AVRSHOCK2_BUTTON_LAST; ++i)
+		for (avrshock2_button_t i = AVRSHOCK2_BUTTON_FIRST; i <= AVRSHOCK2_BUTTON_LAST; ++i)
 			printf("%s: %d\n", button_name[i], avrshock2_buttons[i]);
 		_delay_ms(850);
-		*/
 	}
 }
 

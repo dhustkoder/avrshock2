@@ -4,15 +4,15 @@
 #include <stdint.h>
 
 
-typedef uint8_t AVRSHOCK2_Mode;
-enum AVRSHOCK2_Mode {
+typedef uint8_t avrshock2_mode_t;
+enum avrshock2_mode {
 	AVRSHOCK2_MODE_DIGITAL = 0x41,
 	AVRSHOCK2_MODE_ANALOG  = 0x73
 };
 
 /* Button enums are in byte/bit order as they come in data_buffer[3]...[4] */
-typedef uint8_t AVRSHOCK2_Button;
-enum AVRSHOCK2_Button {
+typedef uint8_t avrshock2_button_t;
+enum avrshock2_button {
 	AVRSHOCK2_BUTTON_SELECT = 0x00,
 	AVRSHOCK2_BUTTON_L3     = 0x01,
 	AVRSHOCK2_BUTTON_R3     = 0x02,
@@ -34,9 +34,9 @@ enum AVRSHOCK2_Button {
 	AVRSHOCK2_BUTTON_LAST   = AVRSHOCK2_BUTTON_SQUARE
 };
 
-/* AVRSHOCK2_Analog enums are in byte order as they come in data_buffer[5]...[9] */
-typedef uint8_t AVRSHOCK2_Analog;
-enum AVRSHOCK2_Analog {
+/* avrshock2_analog_t enums are in byte order as they come in data_buffer[5]...[9] */
+typedef uint8_t avrshock2_analog_t;
+enum avrshock2_analog {
 	AVRSHOCK2_ANALOG_RX,
 	AVRSHOCK2_ANALOG_RY,
 	AVRSHOCK2_ANALOG_LX,
@@ -50,11 +50,11 @@ extern uint8_t avrshock2_buttons[AVRSHOCK2_BUTTON_LAST + 1]; /* 0x00 released - 
 extern uint8_t avrshock2_analogs[AVRSHOCK2_ANALOG_LAST + 1]; /* 0x7F - middle point                */
 
 void avrshock2_init(void);
-void avrshock2_set_mode(AVRSHOCK2_Mode mode, bool lock);
+void avrshock2_set_mode(avrshock2_mode_t mode, bool lock);
 void avrshock2_poll(void);
 
 
-static inline AVRSHOCK2_Mode avrshock2_currmode(void)
+static inline avrshock2_mode_t avrshock2_currmode(void)
 {
 	extern uint8_t avrshock2_data_buffer[34];
 	return avrshock2_data_buffer[1];

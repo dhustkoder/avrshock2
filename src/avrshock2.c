@@ -136,7 +136,7 @@ void avrshock2_init(void)
 	avrshock2_sync();
 }
 
-void avrshock2_set_mode(const AVRSHOCK2_Mode mode, const bool lock)
+void avrshock2_set_mode(const avrshock2_mode_t mode, const bool lock)
 {
 	const uint8_t set_mode[4] = {
 		0x44, 0x00,
