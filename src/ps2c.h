@@ -5,15 +5,13 @@
 
 
 typedef uint8_t PS2C_Mode;
-typedef uint8_t PS2C_Button;
-typedef uint8_t PS2C_Analog;
-
 enum PS2C_Mode {
 	PS2C_MODE_DIGITAL = 0x41,
 	PS2C_MODE_ANALOG  = 0x73
 };
 
 /* Button enums are in byte/bit order as they come in data_buffer[3]...[4] */
+typedef uint8_t PS2C_Button;
 enum PS2C_Button {
 	PS2C_BUTTON_SELECT = 0x00,
 	PS2C_BUTTON_L3     = 0x01,
@@ -29,14 +27,15 @@ enum PS2C_Button {
 	PS2C_BUTTON_L1     = 0x0A,
 	PS2C_BUTTON_R1     = 0x0B,
 	PS2C_BUTTON_TRI    = 0x0C,
-	PS2C_BUTTON_CIR    = 0x0D,
-	PS2C_BUTTON_X      = 0x0E,
-	PS2C_BUTTON_SQR    = 0x0F,
+	PS2C_BUTTON_CIRCLE = 0x0D,
+	PS2C_BUTTON_CROSS  = 0x0E,
+	PS2C_BUTTON_SQUARE = 0x0F,
 	PS2C_BUTTON_FIRST  = PS2C_BUTTON_SELECT,
-	PS2C_BUTTON_LAST   = PS2C_BUTTON_SQR
+	PS2C_BUTTON_LAST   = PS2C_BUTTON_SQUARE
 };
 
 /* PS2C_Analog enums are in byte order as they come in data_buffer[5]...[9] */
+typedef uint8_t PS2C_Analog;
 enum PS2C_Analog {
 	PS2C_ANALOG_RX,
 	PS2C_ANALOG_RY,
@@ -47,19 +46,19 @@ enum PS2C_Analog {
 };
 
 
+extern uint8_t ps2c_buttons[PS2C_BUTTON_LAST + 1]; /* 0x00 released - 0xFF fully pressed */
+extern uint8_t ps2c_analogs[PS2C_ANALOG_LAST + 1]; /* 0x7F - middle point                */
+
+void ps2c_init(void);
+void ps2c_set_mode(PS2C_Mode mode, bool lock);
+void ps2c_poll(void);
+
+
 static inline PS2C_Mode ps2c_currmode(void)
 {
 	extern uint8_t ps2c_data_buffer[34];
 	return ps2c_data_buffer[1];
 }
-
-
-void ps2c_init(void);
-void ps2c_set_mode(const PS2C_Mode mode, const bool lock);
-void ps2c_poll(void);
-
-extern uint8_t ps2c_buttons[PS2C_BUTTON_LAST + 1]; /* 0x00 released - 0xFF fully pressed */
-extern uint8_t ps2c_analogs[PS2C_ANALOG_LAST + 1]; /* 0x7F - middle point                */
 
 
 #endif
