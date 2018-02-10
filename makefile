@@ -1,5 +1,5 @@
 EXAMPLE = avrshock2-example
-EXAMPLE_SOURCES = src/main.c src/uart.c
+EXAMPLE_SOURCES = src/example.c src/uart.c
 EXAMPLE_HEADERS = src/uart.h
 LIB_SOURCES = src/avrshock2.c
 LIB_HEADERS = src/avrshock2.h
@@ -37,3 +37,5 @@ program-example: $(EXAMPLE)
 	$(AVRDUDE) -p $(MCU) -P $(AVRDUDE_PORT) -c $(AVRDUDE_PROGRAMMER) -b 115200 -U flash:w:$(EXAMPLE).hex:i
 
 
+clean:
+	rm -rf *.elf *.hex
