@@ -3,47 +3,47 @@
 #include <util/delay.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>
-#include "ps2c.h"
 #include "uart.h"
+#include "avrshock2.h"
 
 /* *
  * By Rafael Moura 2017 (https://github.com/dhustkoder)
- * ps2c usage example
+ * avrshock2 usage example
  * uncomment uart_init and printfs for serial information on your computer
  * set the BAUD rate in the makefile.
  * this example was tested on atmega328p Arduino UNO board
  * */
 
 static const char* const button_name[] = {
-	[PS2C_BUTTON_SELECT] = "SELECT",
-	[PS2C_BUTTON_L3]     = "L3",
-	[PS2C_BUTTON_R3]     = "R3",
-	[PS2C_BUTTON_START]  = "START",
-	[PS2C_BUTTON_UP]     = "UP",
-	[PS2C_BUTTON_RIGHT]  = "RIGHT",
-	[PS2C_BUTTON_DOWN]   = "DOWN",
-	[PS2C_BUTTON_LEFT]   = "LEFT",
-	[PS2C_BUTTON_L2]     = "L2",
-	[PS2C_BUTTON_R2]     = "R2",
-	[PS2C_BUTTON_L1]     = "L1",
-	[PS2C_BUTTON_R1]     = "R1",
-	[PS2C_BUTTON_TRI]    = "TRIANGLE",
-	[PS2C_BUTTON_CIR]    = "CIRCLE",
-	[PS2C_BUTTON_X]      = "X",
-	[PS2C_BUTTON_SQR]    = "SQUARE"
+	[AVRSHOCK2_BUTTON_SELECT] = "SELECT",
+	[AVRSHOCK2_BUTTON_L3]     = "L3",
+	[AVRSHOCK2_BUTTON_R3]     = "R3",
+	[AVRSHOCK2_BUTTON_START]  = "START",
+	[AVRSHOCK2_BUTTON_UP]     = "UP",
+	[AVRSHOCK2_BUTTON_RIGHT]  = "RIGHT",
+	[AVRSHOCK2_BUTTON_DOWN]   = "DOWN",
+	[AVRSHOCK2_BUTTON_LEFT]   = "LEFT",
+	[AVRSHOCK2_BUTTON_L2]     = "L2",
+	[AVRSHOCK2_BUTTON_R2]     = "R2",
+	[AVRSHOCK2_BUTTON_L1]     = "L1",
+	[AVRSHOCK2_BUTTON_R1]     = "R1",
+	[AVRSHOCK2_BUTTON_TRI]    = "TRIANGLE",
+	[AVRSHOCK2_BUTTON_CIRCLE] = "CIRCLE",
+	[AVRSHOCK2_BUTTON_CROSS]  = "CROSS",
+	[AVRSHOCK2_BUTTON_SQUARE] = "SQUARE"
 };
 
 static const char* const analog_name[] = {
-	[PS2C_ANALOG_RX] = "RX",
-	[PS2C_ANALOG_RY] = "RY",
-	[PS2C_ANALOG_LX] = "LX",
-	[PS2C_ANALOG_LY] = "LY"
+	[AVRSHOCK2_ANALOG_RX] = "RX",
+	[AVRSHOCK2_ANALOG_RY] = "RY",
+	[AVRSHOCK2_ANALOG_LX] = "LX",
+	[AVRSHOCK2_ANALOG_LY] = "LY"
 };
 
 
 noreturn void main(void)
 {
-	ps2c_init();
+	avrshock2_init();
 	/* uart_init(); */
 
 	/* let's play with LEDs using the analog stick */
@@ -51,44 +51,44 @@ noreturn void main(void)
 	DDRD |= (1<<PD3)|(1<<PD5)|(1<<PD6);
 	DDRB |= (1<<PB1);
 
-	ps2c_set_mode(PS2C_MODE_ANALOG, true);
+	avrshock2_set_mode(AVRSHOCK2_MODE_ANALOG, true);
 
 	for (;;) {
-		ps2c_poll();
+		avrshock2_poll();
 
-		if (ps2c_buttons[PS2C_BUTTON_L3]) {
+		if (avrshock2_buttons[AVRSHOCK2_BUTTON_L3]) {
 			PORTD |= (1<<PD3)|(1<<PD5)|(1<<PD6);
 			PORTB |= (1<<PB1);
 			continue;
 		}
 
-		if (ps2c_analogs[PS2C_ANALOG_LX] > (128 + SENSITIVITY))
+		if (avrshock2_analogs[AVRSHOCK2_ANALOG_LX] > (128 + SENSITIVITY))
 			PORTD |= (1<<PD3);
 		else
 			PORTD &= ~(1<<PD3);
 
-		if (ps2c_analogs[PS2C_ANALOG_LX] < (128 - SENSITIVITY))
+		if (avrshock2_analogs[AVRSHOCK2_ANALOG_LX] < (128 - SENSITIVITY))
 			PORTD |= (1<<PD5);
 		else
 			PORTD &= ~(1<<PD5);
 
-		if (ps2c_analogs[PS2C_ANALOG_LY] > (128 + SENSITIVITY))
+		if (avrshock2_analogs[AVRSHOCK2_ANALOG_LY] > (128 + SENSITIVITY))
 			PORTD |= (1<<PD6);
 		else
 			PORTD &= ~(1<<PD6);
 
-		if (ps2c_analogs[PS2C_ANALOG_LY] < (128 - SENSITIVITY))
+		if (avrshock2_analogs[AVRSHOCK2_ANALOG_LY] < (128 - SENSITIVITY))
 			PORTB |= (1<<PB1);
 		else
 			PORTB &= ~(1<<PB1);
 
 		/*
 		putchar(12);
-		printf("MODE: $%.2X\n", ps2c_currmode());
-		for (uint8_t i = PS2C_ANALOG_FIRST; i <= PS2C_ANALOG_LAST; ++i)
-			printf("%s: %d\n", analog_name[i], ps2c_analogs[i]);
-		for (uint8_t i = PS2C_BUTTON_FIRST; i <= PS2C_BUTTON_LAST; ++i)
-			printf("%s: %d\n", button_name[i], ps2c_buttons[i]);
+		printf("MODE: $%.2X\n", avrshock2_currmode());
+		for (uint8_t i = AVRSHOCK2_ANALOG_FIRST; i <= AVRSHOCK2_ANALOG_LAST; ++i)
+			printf("%s: %d\n", analog_name[i], avrshock2_analogs[i]);
+		for (uint8_t i = AVRSHOCK2_BUTTON_FIRST; i <= AVRSHOCK2_BUTTON_LAST; ++i)
+			printf("%s: %d\n", button_name[i], avrshock2_buttons[i]);
 		_delay_ms(850);
 		*/
 	}
