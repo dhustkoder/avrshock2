@@ -46,9 +46,6 @@ enum avrshock2_analog {
 };
 
 
-extern uint8_t avrshock2_buttons[AVRSHOCK2_BUTTON_LAST + 1]; /* 0x00 released - 0xFF fully pressed */
-extern uint8_t avrshock2_analogs[AVRSHOCK2_ANALOG_LAST + 1]; /* 0x7F - middle point                */
-
 void avrshock2_init(void);
 void avrshock2_set_mode(avrshock2_mode_t mode, bool lock);
 void avrshock2_poll(void);
