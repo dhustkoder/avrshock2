@@ -1,5 +1,5 @@
-#ifndef PS2C_UART_H_
-#define PS2C_UART_H_
+#ifndef AVRSHOCK2_UART_H_
+#define AVRSHOCK2_UART_H_
 #include <stdio.h>
 
 
