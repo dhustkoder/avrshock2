@@ -14,85 +14,41 @@
  * this example was tested on atmega328p Arduino UNO board
  * */
 
-static const char* const button_name[] = {
-	[AVRSHOCK2_BUTTON_SELECT] = "SELECT",
-	[AVRSHOCK2_BUTTON_L3]     = "L3",
-	[AVRSHOCK2_BUTTON_R3]     = "R3",
-	[AVRSHOCK2_BUTTON_START]  = "START",
-	[AVRSHOCK2_BUTTON_UP]     = "UP",
-	[AVRSHOCK2_BUTTON_RIGHT]  = "RIGHT",
-	[AVRSHOCK2_BUTTON_DOWN]   = "DOWN",
-	[AVRSHOCK2_BUTTON_LEFT]   = "LEFT",
-	[AVRSHOCK2_BUTTON_L2]     = "L2",
-	[AVRSHOCK2_BUTTON_R2]     = "R2",
-	[AVRSHOCK2_BUTTON_L1]     = "L1",
-	[AVRSHOCK2_BUTTON_R1]     = "R1",
-	[AVRSHOCK2_BUTTON_TRI]    = "TRIANGLE",
-	[AVRSHOCK2_BUTTON_CIRCLE] = "CIRCLE",
-	[AVRSHOCK2_BUTTON_CROSS]  = "CROSS",
-	[AVRSHOCK2_BUTTON_SQUARE] = "SQUARE"
+static const char* const button_names[] = { 
+	"SELECT", "L3", "R3", "START", "UP", "RIGHT", "DOWN", "LEFT", 
+	"L2", "R2", "L1", "R1", "TRIANGLE", "CIRCLE", "CROSS", "SQUARE"
 };
 
-static const char* const analog_name[] = {
-	[AVRSHOCK2_ANALOG_RX] = "RX",
-	[AVRSHOCK2_ANALOG_RY] = "RY",
-	[AVRSHOCK2_ANALOG_LX] = "LX",
-	[AVRSHOCK2_ANALOG_LY] = "LY"
+static const char* const axis_names[] = {
+	"RX", "RY",
+	"LX", "LY"
 };
 
 
 noreturn void main(void)
 {
-	avrshock2_init();
+	avrshock2_button_t buttons = 0;
+	avrshock2_axis_t axis[AVRSHOCK2_AXIS_SIZE];
+
 	uart_init();
-
-	/* let's play with LEDs using the analog stick */
-	/*
-	#define SENSITIVITY (80)
-	DDRD |= (1<<PD3)|(1<<PD5)|(1<<PD6);
-	DDRB |= (1<<PB1);
-	*/
-
+	printf("initializing avrshock2...\n");
+	avrshock2_init();
+	printf("setting mode...\n");
 	avrshock2_set_mode(AVRSHOCK2_MODE_ANALOG, true);
-
+	printf("done!\n");
 	for (;;) {
-		avrshock2_poll();
-		/*
-		if (avrshock2_buttons[AVRSHOCK2_BUTTON_L3]) {
-			PORTD |= (1<<PD3)|(1<<PD5)|(1<<PD6);
-			PORTB |= (1<<PB1);
-			continue;
+		if (avrshock2_poll(&buttons, axis)) {
+			putchar(12);
+			puts("\tAVRSHOCK2 EXAMPLE!\n");
+			printf("Controller mode: %.2X\n", (unsigned)avrshock2_currmode());
+			
+			/* digital */
+			for (int i = 0; i < AVRSHOCK2_BUTTON_NBUTTONS; ++i)
+				printf("BUTTON %s: %d\n", button_names[i], (buttons&(1<<i)) ? 1 : 0);
+			/* axis */
+			for (int i = 0; i < AVRSHOCK2_AXIS_SIZE; ++i)
+				printf("AXIS %s: %d\n", axis_names[i], (int)axis[i]);
 		}
-
-		if (avrshock2_analogs[AVRSHOCK2_ANALOG_LX] > (128 + SENSITIVITY))
-			PORTD |= (1<<PD3);
-		else
-			PORTD &= ~(1<<PD3);
-
-		if (avrshock2_analogs[AVRSHOCK2_ANALOG_LX] < (128 - SENSITIVITY))
-			PORTD |= (1<<PD5);
-		else
-			PORTD &= ~(1<<PD5);
-
-		if (avrshock2_analogs[AVRSHOCK2_ANALOG_LY] > (128 + SENSITIVITY))
-			PORTD |= (1<<PD6);
-		else
-			PORTD &= ~(1<<PD6);
-
-		if (avrshock2_analogs[AVRSHOCK2_ANALOG_LY] < (128 - SENSITIVITY))
-			PORTB |= (1<<PB1);
-		else
-			PORTB &= ~(1<<PB1);
-
-		*/	
-		putchar(12);
-		puts("\tAVRSHOCK2 EXAMPLE!\n");
-		printf("MODE: $%.2X\n", avrshock2_currmode());
-		for (avrshock2_analog_t i = AVRSHOCK2_ANALOG_FIRST; i <= AVRSHOCK2_ANALOG_LAST; ++i)
-			printf("%s: %d\n", analog_name[i], avrshock2_analogs[i]);
-		for (avrshock2_button_t i = AVRSHOCK2_BUTTON_FIRST; i <= AVRSHOCK2_BUTTON_LAST; ++i)
-			printf("%s: %d\n", button_name[i], avrshock2_buttons[i]);
-		_delay_ms(850);
 	}
 }
 

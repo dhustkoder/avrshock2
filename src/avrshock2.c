@@ -44,20 +44,14 @@
 #define F_AVRSHOCK2 384000UL
 #endif
 
-#define RW_DELAY   (((1.0 / F_AVRSHOCK2) * 1000000.0) / 2.0)
-#define WAIT_DELAY (10.0)
-
-/* enum Button byte/bit index on avrshock2_data_buffer */
-#define BUTTON_BYTE(button) avrshock2_data_buffer[(3 + (button > 7))]
-#define BUTTON_BIT(button)  BUTTON_BYTE(button)&(1<<(button&0x07))
+#define RW_US_DELAY   (((1.0 / F_AVRSHOCK2) * 1000000.0) / 2.0)
+#define WAIT_US_DELAY (6.0)
 
 
-uint8_t avrshock2_buttons[AVRSHOCK2_BUTTON_LAST + 1]; /* 0x00 released - 0xFF fully pressed */
-uint8_t avrshock2_analogs[AVRSHOCK2_ANALOG_LAST + 1]; /* 0x7F - middle point                */
-uint8_t avrshock2_data_buffer[34];
+uint8_t avrshock2_data_buffer[42];
 
 
-static uint8_t avrshock2_exchange(const uint8_t out)
+static uint8_t exchange(const uint8_t out)
 {
 	uint8_t in = 0x00;
 	for (uint8_t b = 0; b < 8; ++b) {
@@ -67,59 +61,59 @@ static uint8_t avrshock2_exchange(const uint8_t out)
 			PORT_CMD &= ~BIT_CMD;
 
 		PORT_CLK &= ~BIT_CLK;
-		_delay_us(RW_DELAY);
+		_delay_us(RW_US_DELAY);
 
 		if (PIN_DATA&BIT_DATA)
 			in |= (0x01<<b);
 
 		PORT_CLK |= BIT_CLK;
-		_delay_us(RW_DELAY);
+		_delay_us(RW_US_DELAY);
 	}
 
 	PORT_CMD |= BIT_CMD;
-	_delay_us(WAIT_DELAY);
+	_delay_us(WAIT_US_DELAY);
 	return in;
 }
 
-static void avrshock2_cmd(const uint8_t* const restrict cmd, const uint8_t cmdsize)
+static void send_cmd(const uint8_t* const restrict cmd, const uint8_t cmdsize)
 {
 	PORT_ATT &= ~BIT_ATT;
-	_delay_us(WAIT_DELAY);
+	_delay_us(WAIT_US_DELAY);
 
 	/* send first 2 */
-	avrshock2_data_buffer[0] = avrshock2_exchange(0x01);   /* the first byte in header is always 0x01 */
-	avrshock2_data_buffer[1] = avrshock2_exchange(cmd[0]); /* send second byte and get current mode   */
+	avrshock2_data_buffer[0] = exchange(0x01);   /* the first byte in header is always 0x01 */
+	avrshock2_data_buffer[1] = exchange(cmd[0]); /* send second byte and get current mode   */
 	/* calculate the total number of bytes to send and receive based on the mode */
 	const uint8_t recvsize = ((avrshock2_data_buffer[1]&0x0F) * 2) + 3;
 
 	/* send and receive the rest of the data */
 	short i = 2;
 	for (; i <= cmdsize; ++i)
-		avrshock2_data_buffer[i] = avrshock2_exchange(cmd[i - 1]);
+		avrshock2_data_buffer[i] = exchange(cmd[i - 1]);
 	for (; i < recvsize; ++i)
-		avrshock2_data_buffer[i] = avrshock2_exchange(0x00);
+		avrshock2_data_buffer[i] = exchange(0x00);
 
 	PORT_ATT |= BIT_ATT;
-	_delay_us(WAIT_DELAY);
+	_delay_us(WAIT_US_DELAY);
 }
 
-static void avrshock2_sync(void)
+static void poll(const short times)
 {
 	const uint8_t cmd = 0x42;
-	for (uint8_t i = 0; i < 0x0C; ++i)
-		avrshock2_cmd(&cmd, 1);
+	for (int i = 0; i < times; ++i)
+		send_cmd(&cmd, 1);
 }
 
-static void avrshock2_enter_cfg_mode(void)
+static void enter_cfg_mode(void)
 {
 	const uint8_t enter_cfg[3] = { 0x43, 0x00, 0x01 };
-	avrshock2_cmd(enter_cfg, 3);
+	send_cmd(enter_cfg, 3);
 }
 
-static void avrshock2_exit_cfg_mode(void)
+static void exit_cfg_mode(void)
 {
 	const uint8_t exit_cfg = 0x43;
-	avrshock2_cmd(&exit_cfg, 1);
+	send_cmd(&exit_cfg, 1);
 }
 
 
@@ -133,33 +127,41 @@ void avrshock2_init(void)
 	PORT_ATT |= BIT_ATT;
 	PORT_CMD |= BIT_CMD;
 
-	avrshock2_sync();
+	poll(16);
 }
 
 void avrshock2_set_mode(const avrshock2_mode_t mode, const bool lock)
 {
-	const uint8_t set_mode[4] = {
+	const uint8_t mode_cmd[4] = {
 		0x44, 0x00,
 		mode == AVRSHOCK2_MODE_DIGITAL ? 0x00 : 0x01,
 		lock ? 0x03 : 0x00
 	};
 
 	do {
-		avrshock2_enter_cfg_mode();
-		avrshock2_cmd(set_mode, 4);
-		avrshock2_exit_cfg_mode();
-		avrshock2_sync();
-	} while (avrshock2_currmode() != mode);
+		enter_cfg_mode();
+		send_cmd(mode_cmd, 4);
+		exit_cfg_mode();
+		poll(64);
+	} while (mode != avrshock2_currmode());
 }
 
-void avrshock2_poll(void)
+bool avrshock2_poll(avrshock2_button_t* const buttons,
+                    avrshock2_axis_t axis[AVRSHOCK2_AXIS_SIZE])
 {
-	const uint8_t cmd = 0x42;
-	avrshock2_cmd(&cmd, 1);
+	#define BUFFER_SIZE (sizeof(avrshock2_data_buffer))
+	static uint8_t old_buffer[BUFFER_SIZE];
 
-	memcpy(avrshock2_analogs, avrshock2_data_buffer + 5, 4);
+	poll(1);
 
-	for (uint8_t i = AVRSHOCK2_BUTTON_FIRST; i <= AVRSHOCK2_BUTTON_LAST; ++i)
-		avrshock2_buttons[i] = BUTTON_BIT(i) ? 0x00 : 0xFF;
+	if (memcmp(avrshock2_data_buffer, old_buffer, BUFFER_SIZE) == 0)
+		return false;
+
+	*buttons = ~((avrshock2_data_buffer[4]<<8)|avrshock2_data_buffer[3]);
+	if (avrshock2_currmode() == AVRSHOCK2_MODE_ANALOG)
+		memcpy(axis, avrshock2_data_buffer + 5, AVRSHOCK2_AXIS_SIZE);
+
+	memcpy(old_buffer, avrshock2_data_buffer, BUFFER_SIZE);
+	return true;
 }
 
