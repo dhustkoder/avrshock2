@@ -41,7 +41,7 @@
 #define BIT_CLK    (0x01<<PB0)
 
 #ifndef F_AVRSHOCK2
-#define F_AVRSHOCK2 250000UL
+#define F_AVRSHOCK2 384000UL
 #endif
 
 #define RW_DELAY   (((1.0 / F_AVRSHOCK2) * 1000000.0) / 2.0)
@@ -52,8 +52,8 @@
 #define BUTTON_BIT(button)  BUTTON_BYTE(button)&(1<<(button&0x07))
 
 
-uint8_t avrshock2_buttons[AVRSHOCK2_BUTTON_LAST + 1];
-uint8_t avrshock2_analogs[AVRSHOCK2_ANALOG_LAST + 1];
+uint8_t avrshock2_buttons[AVRSHOCK2_BUTTON_LAST + 1]; /* 0x00 released - 0xFF fully pressed */
+uint8_t avrshock2_analogs[AVRSHOCK2_ANALOG_LAST + 1]; /* 0x7F - middle point                */
 uint8_t avrshock2_data_buffer[34];
 
 
@@ -93,7 +93,7 @@ static void avrshock2_cmd(const uint8_t* const restrict cmd, const uint8_t cmdsi
 	const uint8_t recvsize = ((avrshock2_data_buffer[1]&0x0F) * 2) + 3;
 
 	/* send and receive the rest of the data */
-	uint8_t i = 2;
+	short i = 2;
 	for (; i <= cmdsize; ++i)
 		avrshock2_data_buffer[i] = avrshock2_exchange(cmd[i - 1]);
 	for (; i < recvsize; ++i)
