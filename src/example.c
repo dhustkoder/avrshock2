@@ -34,14 +34,13 @@ noreturn void main(void)
 	printf("initializing avrshock2...\n");
 	avrshock2_init();
 	printf("setting mode...\n");
-	avrshock2_set_mode(AVRSHOCK2_MODE_ANALOG, true);
+	avrshock2_set_mode(AVRSHOCK2_MODE_DIGITAL, false);
 	printf("done!\n");
 	for (;;) {
 		if (avrshock2_poll(&buttons, axis)) {
 			putchar(12);
 			puts("\tAVRSHOCK2 EXAMPLE!\n");
-			printf("Controller mode: %.2X\n", (unsigned)avrshock2_currmode());
-			
+			printf("Controller mode: %.2X\n", (unsigned)avrshock2_get_mode());	
 			/* digital */
 			for (int i = 0; i < AVRSHOCK2_BUTTON_NBUTTONS; ++i)
 				printf("BUTTON %s: %d\n", button_names[i], (buttons&(1<<i)) ? 1 : 0);
@@ -49,6 +48,7 @@ noreturn void main(void)
 			for (int i = 0; i < AVRSHOCK2_AXIS_SIZE; ++i)
 				printf("AXIS %s: %d\n", axis_names[i], (int)axis[i]);
 		}
+		_delay_ms(2);
 	}
 }
 

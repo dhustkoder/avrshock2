@@ -1,11 +1,4 @@
 #include <avr/io.h>
-
-#ifndef BAUD
-#define BAUD (9600)
-#endif
-
-#include <util/setbaud.h>
-
 #include "uart.h"
 
 
@@ -15,9 +8,18 @@ FILE uartin = FDEV_SETUP_STREAM(NULL, uart_getchar, _FDEV_SETUP_READ);
 
 void uart_init(void)
 {
+	#ifndef BAUD
+	#define BAUD (9600)
+	#endif
+	#include <util/setbaud.h>
+
 	UBRR0H = UBRRH_VALUE;
 	UBRR0L = UBRRL_VALUE;
-
+ 	#if USE_2X
+	UCSR0A |= (0x01<<U2X0);
+	#else
+	UCSR0A &= ~(0x01<<U2X0);
+	#endif
 	UCSR0C = (0x01<<UCSZ01)|(0x01<<UCSZ00); /* 8-bit data */ 
 	UCSR0B = (0x01<<RXEN0)|(0x01<<TXEN0);   /* Enable RX and TX */
 

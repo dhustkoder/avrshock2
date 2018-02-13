@@ -48,7 +48,7 @@
 #define WAIT_US_DELAY (6.0)
 
 
-uint8_t avrshock2_data_buffer[42];
+uint8_t avrshock2_data_buffer[33];
 
 
 static uint8_t exchange(const uint8_t out)
@@ -143,25 +143,30 @@ void avrshock2_set_mode(const avrshock2_mode_t mode, const bool lock)
 		send_cmd(mode_cmd, 4);
 		exit_cfg_mode();
 		poll(64);
-	} while (mode != avrshock2_currmode());
+	} while (mode != avrshock2_get_mode());
 }
 
 bool avrshock2_poll(avrshock2_button_t* const buttons,
                     avrshock2_axis_t axis[AVRSHOCK2_AXIS_SIZE])
 {
-	#define BUFFER_SIZE (sizeof(avrshock2_data_buffer))
-	static uint8_t old_buffer[BUFFER_SIZE];
+	static avrshock2_mode_t old_mode = 0;
+	static uint8_t old_data[6] = { 0 };
 
 	poll(1);
 
-	if (memcmp(avrshock2_data_buffer, old_buffer, BUFFER_SIZE) == 0)
+	const uint8_t* const data = &avrshock2_data_buffer[3];
+	const avrshock2_mode_t mode = avrshock2_get_mode();
+	const uint8_t data_size = mode == AVRSHOCK2_MODE_DIGITAL ? 2 : 6;
+	
+	if (old_mode == mode && memcmp(old_data, data, data_size) == 0)
 		return false;
 
-	*buttons = ~((avrshock2_data_buffer[4]<<8)|avrshock2_data_buffer[3]);
-	if (avrshock2_currmode() == AVRSHOCK2_MODE_ANALOG)
-		memcpy(axis, avrshock2_data_buffer + 5, AVRSHOCK2_AXIS_SIZE);
+	*buttons = ~((data[1]<<8)|data[0]);
+	if (mode == AVRSHOCK2_MODE_ANALOG)
+		memcpy(axis, &data[2], AVRSHOCK2_AXIS_SIZE);
 
-	memcpy(old_buffer, avrshock2_data_buffer, BUFFER_SIZE);
+	old_mode = mode;
+	memcpy(old_data, data, data_size);
 	return true;
 }
 

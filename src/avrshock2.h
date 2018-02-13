@@ -60,9 +60,9 @@ bool avrshock2_poll(avrshock2_button_t* buttons,
                     avrshock2_axis_t axis[AVRSHOCK2_AXIS_SIZE]);
 
 
-static inline avrshock2_mode_t avrshock2_currmode(void)
+static inline avrshock2_mode_t avrshock2_get_mode(void)
 {
-	extern uint8_t avrshock2_data_buffer[42];
+	extern uint8_t avrshock2_data_buffer[33];
 	return avrshock2_data_buffer[1];
 }
 
