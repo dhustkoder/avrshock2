@@ -53,6 +53,7 @@ uint8_t avrshock2_data_buffer[42];
 
 static uint8_t exchange(const uint8_t out)
 {
+	_delay_us(WAIT_US_DELAY);
 	uint8_t in = 0x00;
 	for (uint8_t b = 0; b < 8; ++b) {
 		if (out&(0x01<<b))
@@ -71,7 +72,6 @@ static uint8_t exchange(const uint8_t out)
 	}
 
 	PORT_CMD |= BIT_CMD;
-	_delay_us(WAIT_US_DELAY);
 	return in;
 }
 
