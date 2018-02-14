@@ -9,10 +9,11 @@ Look in main.c for pins used to light LEDs, and avrshock2.c for the pins that co
 [![gif](https://user-images.githubusercontent.com/11935784/30407023-2046349e-98cc-11e7-970d-6c117b176b94.gif)](https://www.youtube.com/watch?v=_h1dANNXZOw)
 
 ### Details
-AVRSHOCK2 uses 4 pins to communicate with the controller, select these pins by editing
-the definitions in avrshock2.c source file.
+AVRSHOCK2 uses 4 pins to communicate with the controller: ATT, CMD, DAT, CLK.
+If you use SPI Mode: SS = ATT, MOSI = CMD, MISO = DAT, SCK = CLK.
+You should set the PORT, DDR, BIT for them by defining: AVRSHOCK2_PORT_ATT, AVRCHOCK2_DDR_ATT, AVRSHOCK2_BIT_ATT etc... For DAT you should set the PIN also: AVRSHOCK2_PIN_DAT (see makefile).
 F_AVRSHOCK2 is the rate in hertz that the communication will be made, range (100000 - 500000).
-F_AVRSHOCK2 will default to 250000 if not defined. edit the F_AVRSHOCK2 definition in avrshock2.c, or define it in your compiler flags.
+F_AVRSHOCK2 will default to 250000 if not defined.
 
 Here is the circuit diagram to use AVRSHOCK2:
 
