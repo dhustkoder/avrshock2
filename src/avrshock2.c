@@ -10,38 +10,43 @@
  *
  * By Rafael Moura 2017 (https://github.com/dhustkoder)
  *
- * TODO: (hardware spi)
- * for now only bit bang implementation is done, need to add 
- * implementation for AVR SPI hardware mode instead of software bit bang
- *
  * TODO: (pressure and motor support)
  * Couldn't properly control pressure mode, need more information about 
  * the controller commands, and need add vibration motor controll
  *
  * NOTE:
- * PIN_DATA needs a pull-up resistor around 1K - 10K
+ * PIN_DAT needs a pull-up resistor around 1K - 10K
  *
  * */
 
-#define PORT_ATT   PORTD
-#define DDR_ATT    DDRD
-#define BIT_ATT    (0x01<<PD2)
+#if !defined(AVRSHOCK2_PORT_ATT) || !defined(AVRSHOCK2_DDR_ATT) || !defined(AVRSHOCK2_BIT_ATT) ||                                 \
+    !defined(AVRSHOCK2_PORT_CMD) || !defined(AVRSHOCK2_DDR_CMD) || !defined(AVRSHOCK2_BIT_CMD) ||                                 \
+    !defined(AVRSHOCK2_PORT_DAT) || !defined(AVRSHOCK2_DDR_DAT) || !defined(AVRSHOCK2_PIN_DAT) || !defined(AVRSHOCK2_BIT_DAT) ||  \
+    !defined(AVRSHOCK2_PORT_CLK) || !defined(AVRSHOCK2_DDR_CLK) || !defined(AVRSHOCK2_BIT_CLK)
+#error Need all AVRSHOCK2 Pins definitions.
+#elif !defined(AVRSHOCK2_BIT_BANG) && !defined(AVRSHOCK2_SPI)
+#error At least one mode should be defined.
+#endif
 
-#define PORT_CMD   PORTD
-#define DDR_CMD    DDRD
-#define BIT_CMD    (0x01<<PD4)
+#define PORT_ATT  AVRSHOCK2_PORT_ATT
+#define DDR_ATT   AVRSHOCK2_DDR_ATT 
+#define BIT_ATT   (0x01<<AVRSHOCK2_BIT_ATT)
 
-#define PORT_DATA  PORTD
-#define DDR_DATA   DDRD
-#define PIN_DATA   PIND
-#define BIT_DATA   (0x01<<PD7)
+#define PORT_CMD  AVRSHOCK2_PORT_CMD
+#define DDR_CMD   AVRSHOCK2_DDR_CMD 
+#define BIT_CMD   (0x01<<AVRSHOCK2_BIT_CMD)
 
-#define PORT_CLK   PORTB
-#define DDR_CLK    DDRB
-#define BIT_CLK    (0x01<<PB0)
+#define PORT_DAT  AVRSHOCK2_PORT_DAT
+#define DDR_DAT   AVRSHOCK2_DDR_DAT 
+#define PIN_DAT   AVRSHOCK2_PIN_DAT 
+#define BIT_DAT   (0x01<<AVRSHOCK2_BIT_DAT)
+
+#define PORT_CLK  AVRSHOCK2_PORT_CLK 
+#define DDR_CLK   AVRSHOCK2_DDR_CLK  
+#define BIT_CLK   (0x01<<AVRSHOCK2_BIT_CLK)
 
 #ifndef F_AVRSHOCK2
-#define F_AVRSHOCK2 496000UL
+#define F_AVRSHOCK2 250000UL
 #endif
 
 #define CLK_DELAY      (((1.0 / F_AVRSHOCK2) * 1000000.0) / 2.0)
@@ -55,6 +60,8 @@ uint8_t avrshock2_data_buffer[33];
 static uint8_t exchange(const uint8_t out)
 {
 	_delay_us(EXCHANGE_DELAY);
+
+	#ifdef AVRSHOCK2_BIT_BANG
 	uint8_t in = 0x00;
 	for (uint8_t b = 0; b < 8; ++b) {
 		if (out&(0x01<<b))
@@ -65,7 +72,7 @@ static uint8_t exchange(const uint8_t out)
 		PORT_CLK &= ~BIT_CLK;
 		_delay_us(CLK_DELAY);
 
-		if (PIN_DATA&BIT_DATA)
+		if (PIN_DAT&BIT_DAT)
 			in |= (0x01<<b);
 
 		PORT_CLK |= BIT_CLK;
@@ -74,6 +81,15 @@ static uint8_t exchange(const uint8_t out)
 
 	PORT_CMD |= BIT_CMD;
 	return in;
+
+	#else
+
+	SPDR = out;
+	while (!(SPSR&(0x01<<SPIF)))
+		_delay_us(1);
+	return SPDR;
+
+	#endif
 }
 
 static void send_cmd(const uint8_t* const restrict cmd, const uint8_t cmdsize)
@@ -120,13 +136,25 @@ static void exit_cfg_mode(void)
 
 void avrshock2_init(void)
 {
-	DDR_DATA &= ~BIT_DATA;
+	DDR_DAT &= ~BIT_DAT;
 	DDR_CMD |= BIT_CMD;
 	DDR_ATT |= BIT_ATT;
 	DDR_CLK |= BIT_CLK;
 
 	PORT_ATT |= BIT_ATT;
 	PORT_CMD |= BIT_CMD;
+
+	#ifdef AVRSHOCK2_BIT_BANG
+	SPCR &= ~(0x01<<SPE);
+	#else
+	#if F_AVRSHOCK2 != 250000
+	#error AVRSHOCK2 SPI Mode only support frequency 250000
+	#endif
+	/* set SPI control register */
+	SPCR = (0x01<<SPR1)|(0x01<<CPHA)|(0x01<<CPOL)|(0x01<<MSTR)|(0x01<<DORD)|(0x01<<SPE);
+	/* set SPI status register  */
+	SPSR &= ~SPI2X; /* set SPI frequency */
+	#endif
 
 	poll(16);
 }
