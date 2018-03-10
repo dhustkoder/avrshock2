@@ -34,9 +34,9 @@ typedef uint8_t avrshock2_axis_t;
 #define AVRSHOCK2_AXIS_RY    ((avrshock2_axis_t)0x01)
 #define AVRSHOCK2_AXIS_LX    ((avrshock2_axis_t)0x02)
 #define AVRSHOCK2_AXIS_LY    ((avrshock2_axis_t)0x03)
-#define AVRSHOCK2_AXIS_SIZE  (4)
 #define AVRSHOCK2_AXIS_MAX   ((avrshock2_axis_t)0xFF)
 #define AVRSHOCK2_AXIS_MIN   ((avrshock2_axis_t)0x00)
+#define AVRSHOCK2_AXIS_NAXIS (4)
 
 /* avrshock2_analog_t are in byte order as they come in data buffer [9]...[20] */
 typedef uint8_t avrshock2_analog_t;
@@ -52,16 +52,16 @@ typedef uint8_t avrshock2_analog_t;
 #define AVRSHOCK2_ANALOG_R1        ((avrshock2_analog_t)0x09)
 #define AVRSHOCK2_ANALOG_L2        ((avrshock2_analog_t)0x0A)
 #define AVRSHOCK2_ANALOG_R2        ((avrshock2_analog_t)0x0B)
-#define AVRSHOCK2_ANALOGS_SIZE     (12)
 #define AVRSHOCK2_ANALOG_FULLPRESS ((avrshock2_analog_t)0xFF)
 #define AVRSHOCK2_ANALOG_UNPRESSED ((avrshock2_analog_t)0x00)
+#define AVRSHOCK2_ANALOGS_NANALOGS (12)
 
 
 #ifndef AVRSHOCK2_H_TYPES_ONLY /* AVRSHOCK2_H_TYPES_ONLY */
 void avrshock2_init(void);
 void avrshock2_set_mode(avrshock2_mode_t mode, bool lock);
 bool avrshock2_poll(avrshock2_button_t* buttons,
-                    avrshock2_axis_t axis[AVRSHOCK2_AXIS_SIZE]);
+                    avrshock2_axis_t axis[AVRSHOCK2_AXIS_NAXIS]);
 
 
 static inline avrshock2_mode_t avrshock2_get_mode(void)
