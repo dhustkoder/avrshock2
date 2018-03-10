@@ -60,7 +60,7 @@ static int uart_putchar(const char c, FILE* const stream)
 noreturn void main(void)
 {
 	avrshock2_button_t buttons = 0;
-	avrshock2_axis_t axis[AVRSHOCK2_AXIS_SIZE];
+	avrshock2_axis_t axis[AVRSHOCK2_AXIS_NAXIS];
 
 	uart_init();
 	printf("initializing avrshock2...\n");
@@ -77,7 +77,7 @@ noreturn void main(void)
 			for (int i = 0; i < AVRSHOCK2_BUTTON_NBUTTONS; ++i)
 				printf("BUTTON %s: %d\n", button_names[i], (buttons&(1<<i)) ? 1 : 0);
 			/* axis */
-			for (int i = 0; i < AVRSHOCK2_AXIS_SIZE; ++i)
+			for (int i = 0; i < AVRSHOCK2_AXIS_NAXIS; ++i)
 				printf("AXIS %s: %d\n", axis_names[i], (int)axis[i]);
 		}
 		_delay_ms(2);

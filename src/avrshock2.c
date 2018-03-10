@@ -176,7 +176,7 @@ void avrshock2_set_mode(const avrshock2_mode_t mode, const bool lock)
 }
 
 bool avrshock2_poll(avrshock2_button_t* const buttons,
-                    avrshock2_axis_t axis[AVRSHOCK2_AXIS_SIZE])
+                    avrshock2_axis_t axis[AVRSHOCK2_AXIS_NAXIS])
 {
 	static avrshock2_mode_t old_mode = 0;
 	static uint8_t old_data[6] = { 0 };
@@ -192,7 +192,7 @@ bool avrshock2_poll(avrshock2_button_t* const buttons,
 
 	*buttons = ~((data[1]<<8)|data[0]);
 	if (mode == AVRSHOCK2_MODE_ANALOG)
-		memcpy(axis, &data[2], AVRSHOCK2_AXIS_SIZE);
+		memcpy(axis, &data[2], AVRSHOCK2_AXIS_NAXIS);
 
 	old_mode = mode;
 	memcpy(old_data, data, data_size);
