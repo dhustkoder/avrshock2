@@ -1,9 +1,9 @@
+#include <stdio.h>
 #include <string.h>
 #include <stdnoreturn.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>
-#include "uart.h"
 #include "avrshock2.h"
 
 /* *
@@ -23,6 +23,38 @@ static const char* const axis_names[] = {
 	"RX", "RY",
 	"LX", "LY"
 };
+
+static int uart_putchar(char, FILE*);
+static FILE uartout = FDEV_SETUP_STREAM(uart_putchar, NULL, _FDEV_SETUP_WRITE);
+
+static void uart_init(void)
+{
+	#ifndef BAUD
+	#define BAUD (9600)
+	#endif
+	#include <util/setbaud.h>
+	UBRR0H = UBRRH_VALUE;
+	UBRR0L = UBRRL_VALUE;
+ 	#if USE_2X
+	UCSR0A |= (0x01<<U2X0);
+	#else
+	UCSR0A &= ~(0x01<<U2X0);
+	#endif
+	UCSR0C = (0x01<<UCSZ01)|(0x01<<UCSZ00); /* 8-bit data */ 
+	UCSR0B = (0x01<<RXEN0)|(0x01<<TXEN0);   /* Enable RX and TX */
+
+	stdout = &uartout;
+}
+
+static int uart_putchar(const char c, FILE* const stream)
+{
+	if (c == '\n')
+		uart_putchar('\r', stream);
+
+	loop_until_bit_is_set(UCSR0A, UDRE0);
+	UDR0 = c;
+	return 0;
+}
 
 
 noreturn void main(void)

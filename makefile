@@ -1,7 +1,6 @@
 # Source
 EXAMPLE = avrshock2-example
-EXAMPLE_SOURCES = src/example.c src/uart.c
-EXAMPLE_HEADERS = src/uart.h
+EXAMPLE_SOURCES = src/example.c
 LIB_SOURCES = src/avrshock2.c
 LIB_HEADERS = src/avrshock2.h
 
@@ -60,7 +59,7 @@ AVRDUDE_PROGRAMMER = arduino
 
 all: $(EXAMPLE)
 
-$(EXAMPLE): $(EXAMPLE_SOURCES) $(EXAMPLE_HEADERS) $(LIB_SOURCES) $(LIB_HEADERS)
+$(EXAMPLE): $(EXAMPLE_SOURCES) $(LIB_SOURCES) $(LIB_HEADERS)
 	$(CC) $(CFLAGS) $(EXAMPLE_SOURCES) $(LIB_SOURCES) -o $(EXAMPLE).elf
 	$(OBJCOPY) -j .text  -j .data -O ihex $(EXAMPLE).elf $(EXAMPLE).hex
 	$(SIZE) $(EXAMPLE).elf
