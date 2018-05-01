@@ -118,19 +118,19 @@ static void poll(const short times)
 {
 	const uint8_t cmd = 0x42;
 	for (int i = 0; i < times; ++i)
-		send_cmd(&cmd, 1);
+		send_cmd(&cmd, sizeof cmd);
 }
 
 static void enter_cfg_mode(void)
 {
 	const uint8_t enter_cfg[3] = { 0x43, 0x00, 0x01 };
-	send_cmd(enter_cfg, 3);
+	send_cmd(enter_cfg, sizeof enter_cfg);
 }
 
 static void exit_cfg_mode(void)
 {
 	const uint8_t exit_cfg = 0x43;
-	send_cmd(&exit_cfg, 1);
+	send_cmd(&exit_cfg, sizeof exit_cfg);
 }
 
 
@@ -169,7 +169,7 @@ void avrshock2_set_mode(const avrshock2_mode_t mode, const bool lock)
 
 	do {
 		enter_cfg_mode();
-		send_cmd(mode_cmd, 4);
+		send_cmd(mode_cmd, sizeof mode_cmd);
 		exit_cfg_mode();
 		poll(64);
 	} while (mode != avrshock2_get_mode());
