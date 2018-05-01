@@ -187,15 +187,16 @@ bool avrshock2_poll(avrshock2_button_t* const buttons,
 	const avrshock2_mode_t mode = avrshock2_get_mode();
 	const uint8_t data_size = mode == AVRSHOCK2_MODE_DIGITAL ? 2 : 6;
 	
-	if (old_mode == mode && memcmp(old_data, data, data_size) == 0)
-		return false;
-
 	*buttons = ~((data[1]<<8)|data[0]);
 	if (mode == AVRSHOCK2_MODE_ANALOG)
 		memcpy(axis, &data[2], AVRSHOCK2_AXIS_NAXIS);
 
+	const bool state_change_check = 
+		old_mode != mode || memcmp(old_data, data, data_size) != 0;
+
 	old_mode = mode;
 	memcpy(old_data, data, data_size);
-	return true;
+
+	return state_change_check;
 }
 
