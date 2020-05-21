@@ -2,7 +2,7 @@
 AVRSHOCK2 is a small API to use the PS2 Controller through AVR Microcontrollers.
 To use the AVRSHOCK2, just add the avrshock2.c and avrshock2.h files to your project.
 
-### Example
+### makefile and example.c
 The makefile builds an example of how to use the AVRSHOCK2 API by logging to serial port the pressed buttons, it was tested on Atmega328p (Arduino UNO board).
 
 ### [Example Project](https://github.com/dhustkoder/avrshock2-usb)
