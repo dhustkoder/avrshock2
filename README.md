@@ -6,7 +6,8 @@ To use the AVRSHOCK2, just add the avrshock2.c and avrshock2.h files to your pro
 The makefile builds an example of how to use the AVRSHOCK2 API by logging to serial port the pressed buttons, it was tested on Atmega328p (Arduino UNO board).
 
 ### [Example Project](https://github.com/dhustkoder/avrshock2-usb)
-![gif](https://user-images.githubusercontent.com/11935784/36216949-55bdb2fc-1197-11e8-9f23-88adfcffa6d4.gif)
+[![gif](https://user-images.githubusercontent.com/11935784/36216949-55bdb2fc-1197-11e8-9f23-88adfcffa6d4.gif)]
+(https://github.com/dhustkoder/avrshock2-usb)
 
 
 
